@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { computeTraversalTiming, computeVisibleLineLayout } from '../src/progressive-layout.js';
+import {
+  computeCubicBezierEndpointSlope,
+  computeTraversalTiming,
+  computeVisibleLineLayout
+} from '../src/progressive-layout.js';
 
 test('one visible line begins at configured center', () => {
   assert.deepEqual(
@@ -44,6 +48,11 @@ test('first traversal uses slow-start timing and continuation preserves distance
     duration: 450,
     easing: 'linear'
   });
+});
+
+test('entry easing ends at the same normalized speed as linear continuation', () => {
+  assert.equal(computeCubicBezierEndpointSlope({ x2: 0.8, y2: 0.8 }), 1);
+  assert.equal(computeCubicBezierEndpointSlope({ x2: 0.35, y2: 1 }), 0);
 });
 
 test('zero baseline or duration remains finite and immediate', () => {

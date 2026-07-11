@@ -9,6 +9,13 @@ export function computeVisibleLineLayout({ visibleCount, centerY, lineHeightPx }
   });
 }
 
+export function computeCubicBezierEndpointSlope({ x2, y2 }) {
+  const horizontal = 1 - x2;
+  if (!Number.isFinite(horizontal) || horizontal === 0) return Number.POSITIVE_INFINITY;
+  const vertical = 1 - y2;
+  return Number.isFinite(vertical) ? vertical / horizontal : Number.NaN;
+}
+
 export function computeTraversalTiming({
   distance,
   baselineDistance,
