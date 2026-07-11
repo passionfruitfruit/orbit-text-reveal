@@ -49,7 +49,7 @@ export const animationConfig = normalizeConfig({
     fontWeight: 700
   },
   motion: {
-    easing: 'cubic-bezier(0.65, 0, 0.35, 1)',
+    easing: 'cubic-bezier(0.5, 0, 0.8, 0.8)',
     lineEasing: 'cubic-bezier(0.76, 0, 0.24, 1)',
     continuationEasing: 'linear',
     characterScale: 1.12,

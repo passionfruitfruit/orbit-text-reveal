@@ -79,12 +79,16 @@ npm test
 | `style.background` | `#ecebe8` | 舞台背景颜色 |
 | `style.fontFamily` | 系统无衬线 | 字体族 |
 | `style.fontWeight` | `700` | 字重 |
-| `motion.easing` | 平滑贝塞尔曲线 | 行展开/收回缓动 |
+| `motion.easing` | `cubic-bezier(0.5, 0, 0.8, 0.8)` | 第一条遍历从静止加速到巡航速度 |
 | `motion.continuationEasing` | `linear` | 换行后保持巡航速度，不重复慢启动 |
 | `motion.lineEasing` | 平滑贝塞尔曲线 | 兼容旧配置；当前跨行直接瞬移 |
 | `motion.characterMinScale` | `0.08` | 字符刚脱出或进入圆球时的最小比例 |
 | `motion.enableCharacterScale` | `true` | 是否启用局部字符形变 |
 | `accessibility.reducedMotionRotate` | `false` | 减少动态效果时是否仍轮换文本 |
+
+`motion.easing` 控制展开和收回时第一条被遍历的行。默认曲线从静止加速，并以归一化斜率 `1` 结束，因此可以无速度跳变地进入后续 `linear` 巡航。若自定义 cubic-bezier，想保持同样的连续效果，需要让末端斜率为 `1`；当 `x2 < 1` 时，也就是令第二控制点满足 `x2 === y2`。
+
+`motion.continuationEasing` 控制第二行及之后的运动。保持为 `linear` 时，后续行会按距离缩短或延长持续时间，并维持相同的像素速度。
 
 ## 常用修改
 

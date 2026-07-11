@@ -35,6 +35,7 @@ test('returns independent objects and preserves exact default center hold', () =
   assert.equal(second.timing.centerHoldMs, 1000);
   assert.equal(second.layout.autoWrap, true);
   assert.ok(second.motion.characterMinScale > 0 && second.motion.characterMinScale < 1);
+  assert.equal(second.motion.easing, 'cubic-bezier(0.5, 0, 0.8, 0.8)');
   assert.equal(second.motion.continuationEasing, 'linear');
 });
 

@@ -1,4 +1,5 @@
 import '../src/orbit-text-reveal.js?v=20260711-7';
+import { computeCubicBezierEndpointSlope } from '../src/progressive-layout.js?v=20260711-5';
 
 const results = document.querySelector('#results');
 const host = document.querySelector('#host');
@@ -71,7 +72,7 @@ async function runMainCycle() {
     ...animationConfig([{ text: 'Orbit\nText\nReveal', holdMs: 30 }]),
     layout: { maxWidth: 680, fontSize: 48, lineHeight: 1.16, ballSizeEm: 0.78, ballGapEm: 0.08, autoWrap: false },
     motion: {
-      easing: 'cubic-bezier(0.42, 0, 1, 1)',
+      easing: 'cubic-bezier(0.5, 0, 0.8, 0.8)',
       continuationEasing: 'linear'
     }
   };
@@ -207,6 +208,10 @@ async function runMainCycle() {
   );
   check(revealTimingSamples[0]?.easing === element.config.motion.easing, 'first row uses configured slow-start easing');
   check(revealTimingSamples[1]?.easing === element.config.motion.continuationEasing, 'continuation row uses continuation easing');
+  check(
+    computeCubicBezierEndpointSlope({ x2: 0.8, y2: 0.8 }) === 1,
+    'first-row endpoint speed matches linear continuation speed'
+  );
   const firstDistance = geometry.lines[0].end.x - geometry.lines[0].start.x;
   const secondDistance = geometry.lines[1].end.x - geometry.lines[1].start.x;
   check(

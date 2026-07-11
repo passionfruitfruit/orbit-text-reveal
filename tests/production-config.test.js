@@ -17,6 +17,8 @@ test('central config exports single-line, manual-wrap, and automatic-wrap exampl
   assert.equal(animationConfig.texts[2].text.includes('\n'), false);
   assert.ok(animationConfig.texts[2].text.length > animationConfig.texts[0].text.length);
   assert.ok(animationConfig.texts.every(({ holdMs }) => Number.isFinite(holdMs)));
+  assert.equal(animationConfig.motion.easing, 'cubic-bezier(0.5, 0, 0.8, 0.8)');
+  assert.equal(animationConfig.motion.continuationEasing, 'linear');
 });
 
 test('stage fitting contains a long first manual line followed by a short last line', async () => {

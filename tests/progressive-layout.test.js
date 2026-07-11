@@ -29,7 +29,7 @@ test('first traversal uses slow-start timing and continuation preserves distance
   const common = {
     baselineDistance: 100,
     baselineDuration: 900,
-    easing: 'cubic-bezier(0.65, 0, 0.35, 1)',
+    easing: 'cubic-bezier(0.5, 0, 0.8, 0.8)',
     continuationEasing: 'linear'
   };
   assert.deepEqual(computeTraversalTiming({
