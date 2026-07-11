@@ -30,7 +30,7 @@
 - Produces: `computeCubicBezierEndpointSlope({ x2, y2 }): number`.
 - Preserves: `computeTraversalTiming({ distance, baselineDistance, baselineDuration, first, easing, continuationEasing })`.
 
-- [ ] **Step 1: Write the failing endpoint-slope test**
+- [x] **Step 1: Write the failing endpoint-slope test**
 
 Add:
 
@@ -47,13 +47,13 @@ test('entry easing ends at the same normalized speed as linear continuation', ()
 });
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `node --test tests/progressive-layout.test.js`
 
 Expected: FAIL because `computeCubicBezierEndpointSlope` is not exported.
 
-- [ ] **Step 3: Implement the pure endpoint-slope helper**
+- [x] **Step 3: Implement the pure endpoint-slope helper**
 
 Add:
 
@@ -66,13 +66,13 @@ export function computeCubicBezierEndpointSlope({ x2, y2 }) {
 }
 ```
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 Run: `node --test tests/progressive-layout.test.js`
 
 Expected: all progressive-layout tests PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/progressive-layout.js tests/progressive-layout.test.js
@@ -94,7 +94,7 @@ git commit -m "test: encode continuation endpoint speed"
 - Default/production `motion.easing`: `cubic-bezier(0.5, 0, 0.8, 0.8)`.
 - Default/production `motion.continuationEasing`: `linear`.
 
-- [ ] **Step 1: Write the failing configuration test**
+- [x] **Step 1: Write the failing configuration test**
 
 Add to the default-config test:
 
@@ -105,13 +105,13 @@ assert.equal(config.motion.continuationEasing, 'linear');
 
 Add a production-source assertion that `config.js` contains both exact values.
 
-- [ ] **Step 2: Run configuration tests and verify RED**
+- [x] **Step 2: Run configuration tests and verify RED**
 
 Run: `node --test tests/config.test.js tests/production-config.test.js`
 
 Expected: FAIL because the current first-row curve is `cubic-bezier(0.65, 0, 0.35, 1)`.
 
-- [ ] **Step 3: Change the minimal production values**
+- [x] **Step 3: Change the minimal production values**
 
 In both `src/config.js` and `config.js`, set:
 
@@ -120,11 +120,11 @@ easing: 'cubic-bezier(0.5, 0, 0.8, 0.8)',
 continuationEasing: 'linear',
 ```
 
-- [ ] **Step 4: Align browser timing evidence**
+- [x] **Step 4: Align browser timing evidence**
 
 Use the same first-row curve in the multiline browser fixture. Keep assertions that the first traversal reads `motion.easing`, later traversal reads `motion.continuationEasing`, and later duration is proportional to distance. Add a check that the configured curve's endpoint slope is `1`.
 
-- [ ] **Step 5: Document adjustability and the no-drop condition**
+- [x] **Step 5: Document adjustability and the no-drop condition**
 
 Update README configuration notes:
 
@@ -134,13 +134,13 @@ Update README configuration notes:
 `motion.continuationEasing` controls later rows. Keep it `linear` to preserve constant cross-line pixel speed.
 ```
 
-- [ ] **Step 6: Verify selected tests**
+- [x] **Step 6: Verify selected tests**
 
 Run: `node --test tests/config.test.js tests/production-config.test.js tests/progressive-layout.test.js tests/final-browser-invariants.test.js`
 
 Expected: all selected tests PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/config.js config.js tests/config.test.js tests/production-config.test.js tests/browser-tests.js README.md
@@ -157,7 +157,7 @@ git commit -m "fix: preserve cruise speed across lines"
 **Interfaces:**
 - Produces verified local and GitHub state on `main`.
 
-- [ ] **Step 1: Run all Node and syntax checks**
+- [x] **Step 1: Run all Node and syntax checks**
 
 Run:
 
@@ -170,15 +170,15 @@ done
 
 Expected: all tests PASS and every syntax check exits `0`.
 
-- [ ] **Step 2: Run a fresh browser regression**
+- [x] **Step 2: Run a fresh browser regression**
 
 Open a fresh `tests/browser.html` query version. Verify `ALL TESTS PASSED`, the PASS count, and zero `error`/`warning` console entries.
 
-- [ ] **Step 3: Visually inspect multiline reveal and retract**
+- [x] **Step 3: Visually inspect multiline reveal and retract**
 
 At the production/developer preview, confirm the first traversed row accelerates without endpoint deceleration and the second/third rows maintain one constant pixel speed in both directions.
 
-- [ ] **Step 4: Commit any cache-version-only change**
+- [x] **Step 4: Commit any cache-version-only change**
 
 ```bash
 git add tests/browser.html
@@ -187,7 +187,7 @@ git commit -m "test: refresh continuous-speed browser verification"
 
 Skip this commit when no file changed.
 
-- [ ] **Step 5: Push and verify remote parity**
+- [x] **Step 5: Push and verify remote parity**
 
 Run:
 
