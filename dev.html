@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Orbit Text Reveal · 开发者配置</title>
+    <link rel="stylesheet" href="./src/dev.css">
+  </head>
+  <body>
+    <main class="dev-layout">
+      <section class="preview-pane" aria-labelledby="preview-title">
+        <div class="preview-heading">
+          <div>
+            <p class="eyebrow">Orbit Text Reveal</p>
+            <h1 id="preview-title">实时预览</h1>
+          </div>
+          <p class="preview-state" data-preview-state role="status"></p>
+        </div>
+        <div class="preview-stage">
+          <orbit-text-reveal aria-label="文字动画预览"></orbit-text-reveal>
+          <p class="preview-empty" data-preview-empty hidden>请先填写至少一条有效文本</p>
+        </div>
+        <div class="preview-controls" aria-label="预览播放控制">
+          <button type="button" data-action="play-preview">播放</button>
+          <button type="button" data-action="pause-preview">暂停</button>
+          <button type="button" data-action="replay-current">重播当前</button>
+          <button type="button" data-action="preview-full-loop">预览完整循环</button>
+        </div>
+      </section>
+
+      <form class="editor-pane" data-editor novalidate>
+        <header class="editor-heading">
+          <div>
+            <p class="eyebrow">开发者工具</p>
+            <h2>配置编辑器</h2>
+          </div>
+          <a class="back-link" href="./index.html">查看正式页</a>
+        </header>
+
+        <section class="editor-section" aria-labelledby="texts-title">
+          <div class="section-heading">
+            <div>
+              <h3 id="texts-title">文本队列</h3>
+              <p>文本框内的换行会原样保留。</p>
+            </div>
+            <button type="button" data-action="add-text">添加文本</button>
+          </div>
+          <div class="text-list" data-text-list></div>
+        </section>
+
+        <section class="editor-section" aria-labelledby="timing-title">
+          <h3 id="timing-title">时间</h3>
+          <div class="field-grid">
+            <label>默认展开 (ms)<input type="number" min="0" max="20000" step="10" data-path="timing.revealMs"></label>
+            <label>默认收回 (ms)<input type="number" min="0" max="20000" step="10" data-path="timing.retractMs"></label>
+            <label>换行瞬移（无需时长）<input type="text" value="固定" disabled></label>
+            <label>中心停留 (ms)<input type="number" min="0" max="20000" step="10" data-path="timing.centerHoldMs"></label>
+          </div>
+        </section>
+
+        <section class="editor-section" aria-labelledby="layout-title">
+          <h3 id="layout-title">排版与位置</h3>
+          <div class="field-grid">
+            <label>最大宽度 (px)<input type="number" min="120" max="2400" data-path="layout.maxWidth"></label>
+            <label>字号 (px)<input type="number" min="12" max="240" data-path="layout.fontSize"></label>
+            <label>行高<input type="number" min="0.8" max="2" step="0.01" data-path="layout.lineHeight"></label>
+            <label>圆球大小 (em)<input type="number" min="0.2" max="2" step="0.01" data-path="layout.ballSizeEm"></label>
+            <label>圆球间距 (em)<input type="number" min="0.2" max="2" step="0.01" data-path="layout.ballGapEm"></label>
+            <label>水平位置 x<input type="text" data-path="layout.x" placeholder="50% 或 320px"></label>
+            <label>垂直位置 y<input type="text" data-path="layout.y" placeholder="50% 或 240px"></label>
+            <label>整体缩放<input type="number" min="0.25" max="4" step="0.01" data-path="layout.scale"></label>
+            <label class="check-field"><input type="checkbox" data-path="layout.autoWrap">超宽时自动换行</label>
+          </div>
+        </section>
+
+        <section class="editor-section" aria-labelledby="style-title">
+          <h3 id="style-title">外观</h3>
+          <div class="field-grid">
+            <label>文字颜色<input type="color" data-path="style.textColor"></label>
+            <label>圆球颜色<input type="color" data-path="style.ballColor"></label>
+            <label>背景颜色<input type="color" data-path="style.background"></label>
+            <label class="field-wide">字体族<input type="text" data-path="style.fontFamily"></label>
+            <label>字重<input type="number" min="100" max="900" step="100" data-path="style.fontWeight"></label>
+          </div>
+        </section>
+
+        <section class="editor-section" aria-labelledby="motion-title">
+          <h3 id="motion-title">字符形变</h3>
+          <div class="field-grid">
+            <label class="field-wide">展开缓动<input type="text" data-path="motion.easing"></label>
+            <label class="field-wide">跨行延续缓动<input type="text" data-path="motion.continuationEasing"></label>
+            <label>字符最小比例<input type="number" min="0.01" max="1" step="0.01" data-path="motion.characterMinScale"></label>
+            <label class="check-field"><input type="checkbox" data-path="motion.enableCharacterScale">启用字符形变</label>
+            <label class="check-field field-wide"><input type="checkbox" data-path="accessibility.reducedMotionRotate">减少动效时仍轮换文本</label>
+          </div>
+        </section>
+
+        <section class="editor-section" aria-labelledby="io-title">
+          <h3 id="io-title">导入与导出</h3>
+          <div class="action-grid">
+            <label class="file-action">导入 JSON<input type="file" accept="application/json,.json" data-action="import-config"></label>
+            <button type="button" data-action="copy-config">复制 JSON</button>
+            <button type="button" data-action="download-config">下载 JSON</button>
+          </div>
+          <p class="io-status" data-io-status role="status" aria-live="polite"></p>
+        </section>
+      </form>
+    </main>
+    <script type="module" src="./src/dev-app.js?v=20260711-7"></script>
+  </body>
+</html>
