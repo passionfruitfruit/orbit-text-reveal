@@ -87,6 +87,7 @@ async function runMainCycle() {
   let easingSamplePromise;
   let resolveEasingSample;
   const revealTimingSamples = [];
+  const retractTimingSamples = [];
   easingSamplePromise = new Promise((resolve) => { resolveEasingSample = resolve; });
 
   element.addEventListener('orbit-state-change', (event) => {
@@ -101,6 +102,18 @@ async function runMainCycle() {
         if (!active) return;
         const animationTiming = active.effect.getTiming();
         revealTimingSamples.push({
+          easing: animationTiming.easing,
+          duration: Number(animationTiming.duration)
+        });
+      });
+    }
+
+    if (state === 'retract-line') {
+      requestAnimationFrame(() => {
+        const active = element.shadowRoot.querySelector('.ball').getAnimations()[0];
+        if (!active) return;
+        const animationTiming = active.effect.getTiming();
+        retractTimingSamples.push({
           easing: animationTiming.easing,
           duration: Number(animationTiming.duration)
         });
@@ -221,6 +234,18 @@ async function runMainCycle() {
       0.1
     ),
     'continuation duration preserves horizontal speed'
+  );
+  check(retractTimingSamples[0]?.easing === element.config.motion.easing, 'first retract row uses configured slow-start easing');
+  check(retractTimingSamples[1]?.easing === element.config.motion.continuationEasing, 'continuation retract row uses continuation easing');
+  const lastDistance = geometry.lines.at(-1).end.x - geometry.lines.at(-1).start.x;
+  const previousDistance = geometry.lines.at(-2).end.x - geometry.lines.at(-2).start.x;
+  check(
+    nearlyEqual(
+      retractTimingSamples[1]?.duration,
+      element.config.timing.retractMs * previousDistance / lastDistance,
+      0.1
+    ),
+    'retract continuation duration preserves horizontal speed'
   );
   check(
     samePoint(reverseSnapshots[0].snapshot.ball, {
