@@ -36,3 +36,12 @@ test('README documents arbitrary host placement and continuation motion', async 
   assert.match(readme, /rotate\(/);
   assert.match(readme, /transform-origin/);
 });
+
+test('local preview server binds explicitly to IPv4 loopback', async () => {
+  const packageSource = await readFile(new URL('../package.json', import.meta.url), 'utf8');
+  const packageJson = JSON.parse(packageSource);
+  assert.match(packageJson.scripts.serve, /--bind 127\.0\.0\.1/);
+  const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
+  assert.match(readme, /http:\/\/127\.0\.0\.1:4173\/index\.html/);
+  assert.doesNotMatch(readme, /http:\/\/localhost:4173/);
+});

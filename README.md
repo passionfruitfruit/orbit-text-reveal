@@ -10,9 +10,9 @@ npm run serve
 
 然后打开：
 
-- 正式展示页：<http://localhost:4173/index.html>
-- 开发者配置页：<http://localhost:4173/dev.html>
-- 浏览器测试页：<http://localhost:4173/tests/browser.html>
+- 正式展示页：<http://127.0.0.1:4173/index.html>
+- 开发者配置页：<http://127.0.0.1:4173/dev.html>
+- 浏览器测试页：<http://127.0.0.1:4173/tests/browser.html>
 
 运行 Node 自动化测试：
 
@@ -173,7 +173,7 @@ orbit-text-reveal {
 
 ## 使用开发者配置页
 
-1. 打开 <http://localhost:4173/dev.html>。
+1. 打开 <http://127.0.0.1:4173/dev.html>。
 2. 新增、删除、复制或排序文本；文本框中可直接指定换行。
 3. 调整全局或逐条排版、位置、颜色和字符形变，并使用播放、暂停、重播当前、预览完整循环控制查看结果。
 4. 点击“复制配置”或“下载配置”。
