@@ -1,4 +1,4 @@
-import '../src/orbit-text-reveal.js?v=20260712-1';
+import '../src/orbit-text-reveal.js?v=20260712-2';
 
 const results = document.querySelector('#results');
 const host = document.querySelector('#host');
@@ -89,6 +89,8 @@ async function runMainCycle() {
   let resolveEasingSample;
   const revealTimingSamples = [];
   const retractTimingSamples = [];
+  const seenRevealClocks = new Set();
+  const seenRetractClocks = new Set();
   easingSamplePromise = new Promise((resolve) => { resolveEasingSample = resolve; });
 
   element.addEventListener('orbit-state-change', (event) => {
@@ -99,8 +101,9 @@ async function runMainCycle() {
 
     if (state === 'reveal-line') {
       requestAnimationFrame(() => {
-        const active = element.shadowRoot.querySelector('.ball').getAnimations()[0];
-        if (!active) return;
+        const active = element.shadowRoot.querySelector('.timeline-clock').getAnimations()[0];
+        if (!active || seenRevealClocks.has(active)) return;
+        seenRevealClocks.add(active);
         const animationTiming = active.effect.getTiming();
         revealTimingSamples.push({
           easing: animationTiming.easing,
@@ -111,8 +114,9 @@ async function runMainCycle() {
 
     if (state === 'retract-line') {
       requestAnimationFrame(() => {
-        const active = element.shadowRoot.querySelector('.ball').getAnimations()[0];
-        if (!active) return;
+        const active = element.shadowRoot.querySelector('.timeline-clock').getAnimations()[0];
+        if (!active || seenRetractClocks.has(active)) return;
+        seenRetractClocks.add(active);
         const animationTiming = active.effect.getTiming();
         retractTimingSamples.push({
           easing: animationTiming.easing,
@@ -220,42 +224,12 @@ async function runMainCycle() {
     ),
     'short final row is independently centered'
   );
-  check(revealTimingSamples[0]?.easing === element.config.motion.easing, 'first row uses configured slow-start easing');
-  check(revealTimingSamples[1]?.easing === element.config.motion.continuationEasing, 'continuation row uses continuation easing');
-  check(revealTimingSamples[2]?.easing === element.config.motion.exitEasing, 'final reveal row uses exit easing');
-  const distances = geometry.lines.map((line) => line.end.x - line.start.x);
-  const referenceDistance = Math.max(...distances);
-  const revealCruiseSpeed = referenceDistance / element.config.timing.revealMs;
-  const revealSpeeds = [
-    distances[0] / revealTimingSamples[0].duration * 1.5,
-    distances[1] / revealTimingSamples[1].duration,
-    distances[2] / revealTimingSamples[2].duration * 1.5
-  ];
-  check(
-    revealSpeeds.every((speed) => nearlyEqual(speed, revealCruiseSpeed, 0.001)),
-    'reveal boundaries share one cruise speed'
-  );
-  check(
-    nearlyEqual(revealTimingSamples[1]?.duration, element.config.timing.revealMs * distances[1] / referenceDistance, 0.1),
-    'continuation duration preserves horizontal speed'
-  );
-  check(retractTimingSamples[0]?.easing === element.config.motion.easing, 'first retract row uses configured slow-start easing');
-  check(retractTimingSamples[1]?.easing === element.config.motion.continuationEasing, 'continuation retract row uses continuation easing');
-  check(retractTimingSamples[2]?.easing === element.config.motion.exitEasing, 'final retract row uses exit easing');
-  const retractCruiseSpeed = referenceDistance / element.config.timing.retractMs;
-  const retractSpeeds = [
-    distances[2] / retractTimingSamples[0].duration * 1.5,
-    distances[1] / retractTimingSamples[1].duration,
-    distances[0] / retractTimingSamples[2].duration * 1.5
-  ];
-  check(
-    retractSpeeds.every((speed) => nearlyEqual(speed, retractCruiseSpeed, 0.001)),
-    'retract boundaries share one cruise speed'
-  );
-  check(
-    nearlyEqual(retractTimingSamples[1]?.duration, element.config.timing.retractMs * distances[1] / referenceDistance, 0.1),
-    'retract continuation duration preserves horizontal speed'
-  );
+  check(revealTimingSamples.length === 1, 'multiline reveal uses exactly one global clock');
+  check(revealTimingSamples[0]?.easing === element.config.motion.singleLineEasing, 'global reveal clock uses whole-pass easing');
+  check(revealTimingSamples[0]?.duration === element.config.timing.revealMs, 'global reveal clock uses the complete configured duration');
+  check(retractTimingSamples.length === 1, 'multiline retract uses exactly one global clock');
+  check(retractTimingSamples[0]?.easing === element.config.motion.singleLineEasing, 'global retract clock uses whole-pass easing');
+  check(retractTimingSamples[0]?.duration === element.config.timing.retractMs, 'global retract clock uses the complete configured duration');
   check(
     samePoint(reverseSnapshots[0].snapshot.ball, {
       x: geometry.lines[2].end.x,
@@ -295,7 +269,7 @@ async function runControlAndLifecycleChecks() {
   }));
   check(singleProbe.shadowRoot.querySelectorAll('.line').length === 1, 'single-line item renders exactly one line');
   await waitFor(() => singleProbe.debugSnapshot().state === 'reveal-line', 'single-line probe never reached reveal');
-  const singleAnimations = singleProbe.shadowRoot.querySelector('.ball').getAnimations();
+  const singleAnimations = singleProbe.shadowRoot.querySelector('.timeline-clock').getAnimations();
   check(
     singleAnimations.some((animation) => animation.effect.getTiming().easing === singleProbe.config.motion.singleLineEasing),
     'single-line traversal uses single-line easing'
@@ -352,9 +326,9 @@ async function runControlAndLifecycleChecks() {
     revealMs: 300,
     retractMs: 300
   }));
-  const pauseBall = pauseProbe.shadowRoot.querySelector('.ball');
-  await waitFor(() => pauseBall.getAnimations().length === 1, 'pause probe never started');
-  const activeAnimation = pauseBall.getAnimations()[0];
+  const pauseClock = pauseProbe.shadowRoot.querySelector('.timeline-clock');
+  await waitFor(() => pauseClock.getAnimations().length === 1, 'pause probe never started');
+  const activeAnimation = pauseClock.getAnimations()[0];
   pauseProbe.pause();
   const pausedTime = Number(activeAnimation.currentTime);
   await sleep(60);
@@ -391,14 +365,14 @@ async function runControlAndLifecycleChecks() {
     retractMs: 500
   }), { immediate: true });
   await controlProbe.ready;
-  await waitFor(() => controlProbe.shadowRoot.querySelector('.ball').getAnimations().length > 0, 'disconnect probe never started');
+  await waitFor(() => controlProbe.shadowRoot.querySelector('.timeline-clock').getAnimations().length > 0, 'disconnect probe never started');
 
   let stateCount = 0;
   controlProbe.addEventListener('orbit-state-change', () => { stateCount += 1; });
   controlProbe.remove();
   const disconnectedStateCount = stateCount;
   await sleep(80);
-  check(controlProbe.shadowRoot.querySelector('.ball').getAnimations().length === 0, 'disconnect cancels active animations');
+  check(controlProbe.shadowRoot.querySelector('.timeline-clock').getAnimations().length === 0, 'disconnect cancels active animations');
   check(stateCount === disconnectedStateCount, 'disconnect leaves no stale state loop');
 
   host.append(controlProbe);
@@ -409,7 +383,7 @@ async function runControlAndLifecycleChecks() {
   check(controlProbe.shadowRoot.querySelector('.lines').children.length === 0, 'destroy clears line masks');
   check(controlProbe.shadowRoot.querySelector('.ball').hidden, 'destroy hides ball');
   check(controlProbe.shadowRoot.querySelector('.sr-text').textContent === '', 'destroy clears live-region text');
-  check(controlProbe.shadowRoot.querySelector('.ball').getAnimations().length === 0, 'destroy cancels active animations');
+  check(controlProbe.shadowRoot.querySelector('.timeline-clock').getAnimations().length === 0, 'destroy cancels active animations');
   controlProbe.remove();
 
   const emptyProbe = await appendElement({ texts: [] });
@@ -478,8 +452,8 @@ async function runSafeBoundaryAndVisibilityChecks() {
     const visibilityProbe = await appendElement(animationConfig([{ text: 'Visibility', holdMs: 1000 }], {
       centerHoldMs: 0, lineTravelMs: 220, revealMs: 220, retractMs: 220
     }));
-    await waitFor(() => visibilityProbe.shadowRoot.querySelector('.ball').getAnimations().length > 0, 'visibility probe never started');
-    const animation = visibilityProbe.shadowRoot.querySelector('.ball').getAnimations()[0];
+    await waitFor(() => visibilityProbe.shadowRoot.querySelector('.timeline-clock').getAnimations().length > 0, 'visibility probe never started');
+    const animation = visibilityProbe.shadowRoot.querySelector('.timeline-clock').getAnimations()[0];
     visibilityState = 'hidden';
     document.dispatchEvent(new Event('visibilitychange'));
     const hiddenTime = Number(animation.currentTime);
@@ -532,6 +506,7 @@ async function runTypographyAndEasingChecks() {
     }),
     motion: {
       easing: 'linear',
+      singleLineEasing: 'linear',
       lineEasing: 'cubic-bezier(0.1, 0.8, 0.2, 1)'
     }
   });
@@ -546,13 +521,61 @@ async function runTypographyAndEasingChecks() {
   });
   await waitFor(() => easingProbe.debugSnapshot().state === 'reveal-line', 'easing probe never reached reveal');
   await nextFrame();
-  const revealEasings = easingProbe.shadowRoot.querySelector('.ball').getAnimations()
+  const revealEasings = easingProbe.shadowRoot.querySelector('.timeline-clock').getAnimations()
     .map((animation) => animation.effect.getTiming().easing);
-  check(revealEasings.includes('linear'), 'reveal and retract use motion.easing');
+  check(revealEasings.includes('linear'), 'reveal and retract use the global timeline easing');
   await lineJump;
   check(lineJumpBallAnimationCount === 0, 'cross-line movement is an instantaneous jump without travel animation');
   easingProbe.destroy();
   easingProbe.remove();
+
+  const distanceProbe = document.createElement('orbit-text-reveal');
+  distanceProbe.config = {
+    ...animationConfig([{ text: 'Longest\nMedium\nx', holdMs: 0 }], {
+      centerHoldMs: 0, revealMs: 600, retractMs: 600
+    }),
+    layout: { maxWidth: 680, fontSize: 48, autoWrap: false },
+    motion: { singleLineEasing: 'linear' }
+  };
+  const revealJumpTimes = [];
+  const retractJumpTimes = [];
+  let retracting = false;
+  const distanceCycle = new Promise((resolve) => {
+    distanceProbe.addEventListener('orbit-state-change', (event) => {
+      if (event.detail.state === 'retract-line') retracting = true;
+      if (event.detail.state === 'line-jump') {
+        const clock = distanceProbe.shadowRoot.querySelector('.timeline-clock').getAnimations()[0];
+        if (clock) (retracting ? retractJumpTimes : revealJumpTimes).push(Number(clock.currentTime));
+      }
+      if (event.detail.state === 'recenter') resolve();
+    });
+  });
+  host.append(distanceProbe);
+  await distanceProbe.ready;
+  const distances = distanceProbe.debugSnapshot().geometry.lines
+    .map((line) => line.end.x - line.start.x);
+  const totalDistance = distances.reduce((sum, distance) => sum + distance, 0);
+  await distanceCycle;
+  const expectedRevealJumps = [
+    600 * distances[0] / totalDistance,
+    600 * (distances[0] + distances[1]) / totalDistance
+  ];
+  const expectedRetractJumps = [
+    600 * distances[2] / totalDistance,
+    600 * (distances[2] + distances[1]) / totalDistance
+  ];
+  check(
+    revealJumpTimes.length === 2
+      && revealJumpTimes.every((time, index) => nearlyEqual(time, expectedRevealJumps[index], 35)),
+    'reveal row boundaries follow cumulative pixel distance on one clock'
+  );
+  check(
+    retractJumpTimes.length === 2
+      && retractJumpTimes.every((time, index) => nearlyEqual(time, expectedRetractJumps[index], 35)),
+    'retract row boundaries follow cumulative pixel distance on one clock'
+  );
+  distanceProbe.destroy();
+  distanceProbe.remove();
 }
 
 async function runResizeObserverChecks() {
@@ -792,12 +815,13 @@ async function runDeveloperPageCheck() {
 
   input(frameDoc.querySelector('[data-path="timing.centerHoldMs"]'), '0');
   await waitFor(() => preview.config.timing.centerHoldMs === 0, 'developer timing control did not reach preview');
-  await waitFor(() => preview.shadowRoot.querySelector('.ball').getAnimations().length > 0, 'developer preview controls had no active animation');
+  const previewClock = preview.shadowRoot.querySelector('.timeline-clock');
+  await waitFor(() => previewClock.getAnimations().length > 0, 'developer preview controls had no active animation');
   click('[data-action="pause-preview"]');
-  check(preview.shadowRoot.querySelector('.ball').getAnimations().length > 0
-    && preview.shadowRoot.querySelector('.ball').getAnimations().every((animation) => animation.playState === 'paused'), 'developer pause control calls shared component pause');
+  check(previewClock.getAnimations().length > 0
+    && previewClock.getAnimations().every((animation) => animation.playState === 'paused'), 'developer pause control calls shared component pause');
   click('[data-action="play-preview"]');
-  check(preview.shadowRoot.querySelector('.ball').getAnimations().every((animation) => animation.playState !== 'paused'), 'developer play control calls shared component play');
+  check(previewClock.getAnimations().every((animation) => animation.playState !== 'paused'), 'developer play control calls shared component play');
   click('[data-action="replay-current"]');
   await preview.ready;
   check(explicitRestarts === 1, 'developer replay-current control calls shared component restart');
