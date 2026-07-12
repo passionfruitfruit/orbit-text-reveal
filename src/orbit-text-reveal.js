@@ -1,6 +1,10 @@
 import { normalizeConfig } from './config.js?v=20260711-4';
 import { computeLineMotionFrame } from './motion.js?v=20260711-6';
-import { computeTraversalTiming, computeVisibleLineLayout } from './progressive-layout.js?v=20260711-4';
+import {
+  computeTraversalTiming,
+  computeVisibleLineLayout,
+  traversalRole
+} from './progressive-layout.js?v=20260712-1';
 import { fitTextLayoutToStage, fitTextSequenceToStage } from './stage-layout.js?v=20260711-4';
 
 const ABORT_ERROR = () => new DOMException('Animation aborted', 'AbortError');
@@ -500,8 +504,8 @@ export class OrbitTextReveal extends HTMLElement {
     this.#positionVisibleLines(1);
     this.#setBallPosition(this.#linePoint(this.#lineViews[0], 'start'));
 
-    const revealBaselineDistance = this.#lineDistance(this.#lineViews[0]);
-    const revealBaselineDuration = item.revealMs ?? timing.revealMs;
+    const referenceDistance = this.#referenceDistance();
+    const revealDuration = item.revealMs ?? timing.revealMs;
 
     for (let index = 0; index < this.#lineViews.length; index += 1) {
       const view = this.#lineViews[index];
@@ -512,9 +516,9 @@ export class OrbitTextReveal extends HTMLElement {
       }
       const traversal = this.#traversalTiming(
         view,
-        revealBaselineDistance,
-        revealBaselineDuration,
-        index === 0
+        referenceDistance,
+        revealDuration,
+        traversalRole({ position: index, count: this.#lineViews.length })
       );
       await this.#animateLine(
         view,
@@ -531,15 +535,15 @@ export class OrbitTextReveal extends HTMLElement {
     await this.#delay(item.holdMs ?? timing.centerHoldMs, signal);
 
     const lastIndex = this.#lineViews.length - 1;
-    const retractBaselineDistance = this.#lineDistance(this.#lineViews[lastIndex]);
-    const retractBaselineDuration = item.retractMs ?? timing.retractMs;
+    const retractDuration = item.retractMs ?? timing.retractMs;
     for (let index = lastIndex; index >= 0; index -= 1) {
       const view = this.#lineViews[index];
+      const position = lastIndex - index;
       const traversal = this.#traversalTiming(
         view,
-        retractBaselineDistance,
-        retractBaselineDuration,
-        index === lastIndex
+        referenceDistance,
+        retractDuration,
+        traversalRole({ position, count: this.#lineViews.length })
       );
       await this.#animateLine(
         view,
@@ -651,14 +655,20 @@ export class OrbitTextReveal extends HTMLElement {
     return Math.abs(view.geometry.end.x - view.geometry.start.x);
   }
 
-  #traversalTiming(view, baselineDistance, baselineDuration, first) {
+  #referenceDistance() {
+    return Math.max(0, ...this.#lineViews.map((view) => this.#lineDistance(view)));
+  }
+
+  #traversalTiming(view, referenceDistance, referenceDuration, role) {
     return computeTraversalTiming({
       distance: this.#lineDistance(view),
-      baselineDistance,
-      baselineDuration,
-      first,
+      referenceDistance,
+      referenceDuration,
+      role,
       easing: this.#config.motion.easing,
-      continuationEasing: this.#config.motion.continuationEasing
+      continuationEasing: this.#config.motion.continuationEasing,
+      exitEasing: this.#config.motion.exitEasing,
+      singleLineEasing: this.#config.motion.singleLineEasing
     });
   }
 

@@ -24,9 +24,15 @@ test('visibility pause is distinct from user pause and is lifecycle-cleaned', ()
   assert.match(source, /removeEventListener\('visibilitychange'/);
 });
 
-test('reveal and retract use one easing while cross-line movement is instantaneous', () => {
+test('reveal and retract use shared-speed traversal roles while line jumps stay instantaneous', () => {
   assert.match(source, /computeTraversalTiming/);
+  assert.match(source, /traversalRole/);
+  assert.match(source, /#referenceDistance\(\)/);
+  assert.match(source, /referenceDistance/);
   assert.match(source, /continuationEasing:\s*this\.#config\.motion\.continuationEasing/);
+  assert.match(source, /exitEasing:\s*this\.#config\.motion\.exitEasing/);
+  assert.match(source, /singleLineEasing:\s*this\.#config\.motion\.singleLineEasing/);
+  assert.doesNotMatch(source, /baselineDistance/);
   assert.match(source, /#setState\('line-jump'\)/);
   assert.doesNotMatch(source, /#animateBall\(view\.geometry\.end/);
 });

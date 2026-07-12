@@ -1,5 +1,4 @@
-import '../src/orbit-text-reveal.js?v=20260711-7';
-import { computeCubicBezierEndpointSlope } from '../src/progressive-layout.js?v=20260711-5';
+import '../src/orbit-text-reveal.js?v=20260712-1';
 
 const results = document.querySelector('#results');
 const host = document.querySelector('#host');
@@ -69,11 +68,13 @@ function matrixFor(transform) {
 async function runMainCycle() {
   const element = document.createElement('orbit-text-reveal');
   element.config = {
-    ...animationConfig([{ text: 'Orbit\nText\nReveal', holdMs: 30 }]),
+    ...animationConfig([{ text: 'Longest\nMedium\nx', holdMs: 30 }]),
     layout: { maxWidth: 680, fontSize: 48, lineHeight: 1.16, ballSizeEm: 0.78, ballGapEm: 0.08, autoWrap: false },
     motion: {
-      easing: 'cubic-bezier(0.5, 0, 0.8, 0.8)',
-      continuationEasing: 'linear'
+      easing: 'cubic-bezier(0.333333, 0, 0.666667, 0.5)',
+      continuationEasing: 'linear',
+      exitEasing: 'cubic-bezier(0.333333, 0.5, 0.666667, 1)',
+      singleLineEasing: 'cubic-bezier(0.333333, 0, 0.666667, 1)'
     }
   };
 
@@ -221,30 +222,38 @@ async function runMainCycle() {
   );
   check(revealTimingSamples[0]?.easing === element.config.motion.easing, 'first row uses configured slow-start easing');
   check(revealTimingSamples[1]?.easing === element.config.motion.continuationEasing, 'continuation row uses continuation easing');
+  check(revealTimingSamples[2]?.easing === element.config.motion.exitEasing, 'final reveal row uses exit easing');
+  const distances = geometry.lines.map((line) => line.end.x - line.start.x);
+  const referenceDistance = Math.max(...distances);
+  const revealCruiseSpeed = referenceDistance / element.config.timing.revealMs;
+  const revealSpeeds = [
+    distances[0] / revealTimingSamples[0].duration * 1.5,
+    distances[1] / revealTimingSamples[1].duration,
+    distances[2] / revealTimingSamples[2].duration * 1.5
+  ];
   check(
-    computeCubicBezierEndpointSlope({ x2: 0.8, y2: 0.8 }) === 1,
-    'first-row endpoint speed matches linear continuation speed'
+    revealSpeeds.every((speed) => nearlyEqual(speed, revealCruiseSpeed, 0.001)),
+    'reveal boundaries share one cruise speed'
   );
-  const firstDistance = geometry.lines[0].end.x - geometry.lines[0].start.x;
-  const secondDistance = geometry.lines[1].end.x - geometry.lines[1].start.x;
   check(
-    nearlyEqual(
-      revealTimingSamples[1]?.duration,
-      element.config.timing.revealMs * secondDistance / firstDistance,
-      0.1
-    ),
+    nearlyEqual(revealTimingSamples[1]?.duration, element.config.timing.revealMs * distances[1] / referenceDistance, 0.1),
     'continuation duration preserves horizontal speed'
   );
   check(retractTimingSamples[0]?.easing === element.config.motion.easing, 'first retract row uses configured slow-start easing');
   check(retractTimingSamples[1]?.easing === element.config.motion.continuationEasing, 'continuation retract row uses continuation easing');
-  const lastDistance = geometry.lines.at(-1).end.x - geometry.lines.at(-1).start.x;
-  const previousDistance = geometry.lines.at(-2).end.x - geometry.lines.at(-2).start.x;
+  check(retractTimingSamples[2]?.easing === element.config.motion.exitEasing, 'final retract row uses exit easing');
+  const retractCruiseSpeed = referenceDistance / element.config.timing.retractMs;
+  const retractSpeeds = [
+    distances[2] / retractTimingSamples[0].duration * 1.5,
+    distances[1] / retractTimingSamples[1].duration,
+    distances[0] / retractTimingSamples[2].duration * 1.5
+  ];
   check(
-    nearlyEqual(
-      retractTimingSamples[1]?.duration,
-      element.config.timing.retractMs * previousDistance / lastDistance,
-      0.1
-    ),
+    retractSpeeds.every((speed) => nearlyEqual(speed, retractCruiseSpeed, 0.001)),
+    'retract boundaries share one cruise speed'
+  );
+  check(
+    nearlyEqual(retractTimingSamples[1]?.duration, element.config.timing.retractMs * distances[1] / referenceDistance, 0.1),
     'retract continuation duration preserves horizontal speed'
   );
   check(
@@ -281,9 +290,16 @@ async function runMainCycle() {
 
 async function runControlAndLifecycleChecks() {
   const singleProbe = await appendElement(animationConfig([{ text: 'Single line', holdMs: 1000 }], {
-    centerHoldMs: 1000
+    centerHoldMs: 0,
+    revealMs: 300
   }));
   check(singleProbe.shadowRoot.querySelectorAll('.line').length === 1, 'single-line item renders exactly one line');
+  await waitFor(() => singleProbe.debugSnapshot().state === 'reveal-line', 'single-line probe never reached reveal');
+  const singleAnimations = singleProbe.shadowRoot.querySelector('.ball').getAnimations();
+  check(
+    singleAnimations.some((animation) => animation.effect.getTiming().easing === singleProbe.config.motion.singleLineEasing),
+    'single-line traversal uses single-line easing'
+  );
   singleProbe.destroy();
   singleProbe.remove();
 

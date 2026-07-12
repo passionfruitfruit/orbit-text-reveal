@@ -28,6 +28,11 @@ test('browser runner names every final handoff invariant', async () => {
     'short final row is independently centered',
     'continuation row uses continuation easing',
     'continuation duration preserves horizontal speed',
+    'final reveal row uses exit easing',
+    'reveal boundaries share one cruise speed',
+    'final retract row uses exit easing',
+    'retract boundaries share one cruise speed',
+    'single-line traversal uses single-line easing',
     'per-text layout override did not reach shared preview',
     'developer full-loop control restarts from first item'
   ];
