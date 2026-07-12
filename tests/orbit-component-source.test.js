@@ -24,15 +24,15 @@ test('visibility pause is distinct from user pause and is lifecycle-cleaned', ()
   assert.match(source, /removeEventListener\('visibilitychange'/);
 });
 
-test('reveal and retract use shared-speed traversal roles while line jumps stay instantaneous', () => {
-  assert.match(source, /computeTraversalTiming/);
-  assert.match(source, /traversalRole/);
-  assert.match(source, /#referenceDistance\(\)/);
-  assert.match(source, /referenceDistance/);
-  assert.match(source, /continuationEasing:\s*this\.#config\.motion\.continuationEasing/);
-  assert.match(source, /exitEasing:\s*this\.#config\.motion\.exitEasing/);
-  assert.match(source, /singleLineEasing:\s*this\.#config\.motion\.singleLineEasing/);
-  assert.doesNotMatch(source, /baselineDistance/);
+test('reveal and retract use one cumulative clock while line jumps stay instantaneous', () => {
+  assert.match(source, /buildPathTimeline/);
+  assert.match(source, /locatePathProgress/);
+  assert.match(source, /#animatePass\(/);
+  assert.match(source, /timeline-clock/);
+  assert.match(source, /easing:\s*this\.#config\.motion\.singleLineEasing/);
+  assert.match(source, /getComputedTiming\(\)\.progress/);
+  assert.doesNotMatch(source, /computeTraversalTiming/);
+  assert.doesNotMatch(source, /traversalRole/);
   assert.match(source, /#setState\('line-jump'\)/);
   assert.doesNotMatch(source, /#animateBall\(view\.geometry\.end/);
 });
@@ -40,8 +40,7 @@ test('reveal and retract use shared-speed traversal roles while line jumps stay 
 test('multiline orchestration progressively centers currently visible rows', () => {
   assert.match(source, /computeVisibleLineLayout/);
   assert.match(source, /#positionVisibleLines\(visibleCount\)/);
-  assert.match(source, /#positionVisibleLines\(index \+ 1\)/);
-  assert.match(source, /#positionVisibleLines\(index\)/);
+  assert.match(source, /#positionVisibleLines\(activeIndex \+ 1\)/);
   assert.match(source, /view\.mask\.hidden\s*=\s*index\s*>=\s*visibleCount/);
 });
 

@@ -1,10 +1,10 @@
 import { normalizeConfig } from './config.js?v=20260711-4';
 import { computeLineMotionFrame } from './motion.js?v=20260711-6';
 import {
-  computeTraversalTiming,
+  buildPathTimeline,
   computeVisibleLineLayout,
-  traversalRole
-} from './progressive-layout.js?v=20260712-1';
+  locatePathProgress
+} from './progressive-layout.js?v=20260712-2';
 import { fitTextLayoutToStage, fitTextSequenceToStage } from './stage-layout.js?v=20260711-4';
 
 const ABORT_ERROR = () => new DOMException('Animation aborted', 'AbortError');
@@ -77,10 +77,12 @@ export class OrbitTextReveal extends HTMLElement {
         .line-content { position: absolute; left: 0; top: 0; white-space: pre; will-change: transform; }
         .glyph { display: inline-block; font-kerning: none; font-variant-ligatures: none; transform-origin: right center; will-change: transform; }
         .ball { position: absolute; left: 0; top: 0; z-index: 2; border-radius: 50%; will-change: transform; }
+        .timeline-clock { position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none; }
         .sr-text { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
       </style>
       <div class="stage" role="status" aria-live="polite">
         <span class="sr-text"></span>
+        <span class="timeline-clock" aria-hidden="true"></span>
         <div class="visual" aria-hidden="true">
           <div class="lines"></div>
           <div class="ball"></div>
@@ -504,62 +506,24 @@ export class OrbitTextReveal extends HTMLElement {
     this.#positionVisibleLines(1);
     this.#setBallPosition(this.#linePoint(this.#lineViews[0], 'start'));
 
-    const referenceDistance = this.#referenceDistance();
     const revealDuration = item.revealMs ?? timing.revealMs;
-
-    for (let index = 0; index < this.#lineViews.length; index += 1) {
-      const view = this.#lineViews[index];
-      if (index > 0) {
-        this.#positionVisibleLines(index + 1);
-        this.#setState('line-jump');
-        this.#setBallPosition(this.#linePoint(view, 'start'));
-      }
-      const traversal = this.#traversalTiming(
-        view,
-        referenceDistance,
-        revealDuration,
-        traversalRole({ position: index, count: this.#lineViews.length })
-      );
-      await this.#animateLine(
-        view,
-        0,
-        1,
-        traversal.duration,
-        traversal.easing,
-        'reveal-line',
-        signal
-      );
-    }
+    await this.#animatePass({
+      direction: 'reveal',
+      duration: revealDuration,
+      easing: this.#config.motion.singleLineEasing,
+      signal
+    });
 
     this.#setState('expanded-hold');
     await this.#delay(item.holdMs ?? timing.centerHoldMs, signal);
 
-    const lastIndex = this.#lineViews.length - 1;
     const retractDuration = item.retractMs ?? timing.retractMs;
-    for (let index = lastIndex; index >= 0; index -= 1) {
-      const view = this.#lineViews[index];
-      const position = lastIndex - index;
-      const traversal = this.#traversalTiming(
-        view,
-        referenceDistance,
-        retractDuration,
-        traversalRole({ position, count: this.#lineViews.length })
-      );
-      await this.#animateLine(
-        view,
-        1,
-        0,
-        traversal.duration,
-        traversal.easing,
-        'retract-line',
-        signal
-      );
-      if (index > 0) {
-        this.#positionVisibleLines(index);
-        this.#setState('line-jump');
-        this.#setBallPosition(this.#linePoint(this.#lineViews[index - 1], 'end'));
-      }
-    }
+    await this.#animatePass({
+      direction: 'retract',
+      duration: retractDuration,
+      easing: this.#config.motion.singleLineEasing,
+      signal
+    });
 
     signal.throwIfAborted();
     this.#setBallPosition(this.#geometry.center);
@@ -578,60 +542,66 @@ export class OrbitTextReveal extends HTMLElement {
     this.#setBallPosition(this.#linePoint(this.#lineViews.at(-1), 'end'));
   }
 
-  async #animateLine(view, fromProgress, toProgress, duration, easing, state, signal) {
+  async #animatePass({ direction, duration, easing, signal }) {
+    const timeline = buildPathTimeline(this.#lineViews.map((view) => this.#lineDistance(view)));
+    const reveal = direction === 'reveal';
+    let activeIndex = reveal ? 0 : this.#lineViews.length - 1;
+    const state = reveal ? 'reveal-line' : 'retract-line';
+
+    const applyProgress = (clockProgress) => {
+      const pathProgress = reveal ? clockProgress : 1 - clockProgress;
+      const located = locatePathProgress(timeline, pathProgress);
+      if (!located) return;
+
+      if (located.index !== activeIndex) {
+        const step = reveal ? 1 : -1;
+        for (let index = activeIndex; index !== located.index; index += step) {
+          this.#applyLineFrame(this.#lineViews[index], reveal ? 1 : 0);
+        }
+        activeIndex = located.index;
+        this.#positionVisibleLines(activeIndex + 1);
+        this.#setState('line-jump');
+        this.#setBallPosition(this.#linePoint(
+          this.#lineViews[activeIndex],
+          reveal ? 'start' : 'end'
+        ));
+        this.#setState(state);
+      }
+      this.#applyLineFrame(this.#lineViews[activeIndex], located.localProgress);
+    };
+
     this.#setState(state);
-    const fromFrame = this.#lineFrame(view, fromProgress);
-    const toFrame = this.#lineFrame(view, toProgress);
-    if (duration === 0) {
+    if (duration === 0 || timeline.totalDistance === 0) {
       signal.throwIfAborted();
-      this.#applyLineFrame(view, toProgress);
+      applyProgress(1);
       return;
     }
 
-    const options = { duration, easing, fill: 'forwards' };
-    const maskAnimation = view.mask.animate(
-      [{ clipPath: this.#clipPath(fromFrame) }, { clipPath: this.#clipPath(toFrame) }],
-      options
+    const clock = this.shadowRoot.querySelector('.timeline-clock').animate(
+      [{ opacity: 0 }, { opacity: 0 }],
+      { duration, easing, fill: 'forwards' }
     );
-    const contentAnimation = view.content.animate(
-      [
-        { transform: `translate3d(${fromFrame.contentX}px,0,0)` },
-        { transform: `translate3d(${toFrame.contentX}px,0,0)` }
-      ],
-      options
-    );
-    const ballAnimation = this.shadowRoot.querySelector('.ball').animate(
-      [{ transform: pointTransform(fromFrame.ball) }, { transform: pointTransform(toFrame.ball) }],
-      options
-    );
-    this.#trackAnimation(maskAnimation);
-    this.#trackAnimation(contentAnimation);
-    this.#trackAnimation(ballAnimation);
+    this.#trackAnimation(clock);
     let frame = 0;
-    const updateGlyphs = () => {
-      const computedProgress = maskAnimation.effect.getComputedTiming().progress;
-      const fraction = typeof computedProgress === 'number'
+    const update = () => {
+      const computedProgress = clock.effect.getComputedTiming().progress;
+      const progress = typeof computedProgress === 'number'
         ? Math.min(1, Math.max(0, computedProgress))
         : 0;
-      const progress = fromProgress + (toProgress - fromProgress) * fraction;
-      this.#setGlyphScales(view, this.#lineFrame(view, progress).glyphScales);
-      if (maskAnimation.playState !== 'finished' && maskAnimation.playState !== 'idle') {
-        frame = requestAnimationFrame(updateGlyphs);
+      applyProgress(progress);
+      if (clock.playState !== 'finished' && clock.playState !== 'idle') {
+        frame = requestAnimationFrame(update);
       }
     };
-    frame = requestAnimationFrame(updateGlyphs);
+    frame = requestAnimationFrame(update);
     try {
-      await this.#animationsFinished([maskAnimation, contentAnimation, ballAnimation], signal);
+      await this.#animationsFinished([clock], signal);
+      applyProgress(1);
     } finally {
       cancelAnimationFrame(frame);
-      this.#untrackAnimation(maskAnimation);
-      this.#untrackAnimation(contentAnimation);
-      this.#untrackAnimation(ballAnimation);
+      this.#untrackAnimation(clock);
+      clock.cancel();
     }
-    this.#applyLineFrame(view, toProgress);
-    maskAnimation.cancel();
-    contentAnimation.cancel();
-    ballAnimation.cancel();
   }
 
   #lineFrame(view, progress) {
@@ -653,23 +623,6 @@ export class OrbitTextReveal extends HTMLElement {
 
   #lineDistance(view) {
     return Math.abs(view.geometry.end.x - view.geometry.start.x);
-  }
-
-  #referenceDistance() {
-    return Math.max(0, ...this.#lineViews.map((view) => this.#lineDistance(view)));
-  }
-
-  #traversalTiming(view, referenceDistance, referenceDuration, role) {
-    return computeTraversalTiming({
-      distance: this.#lineDistance(view),
-      referenceDistance,
-      referenceDuration,
-      role,
-      easing: this.#config.motion.easing,
-      continuationEasing: this.#config.motion.continuationEasing,
-      exitEasing: this.#config.motion.exitEasing,
-      singleLineEasing: this.#config.motion.singleLineEasing
-    });
   }
 
   #linePoint(view, kind) {
