@@ -25,9 +25,11 @@ export const DEFAULT_CONFIG = Object.freeze({
     fontWeight: 700
   }),
   motion: Object.freeze({
-    easing: 'cubic-bezier(0.5, 0, 0.8, 0.8)',
+    easing: 'cubic-bezier(0.333333, 0, 0.666667, 0.5)',
     lineEasing: 'cubic-bezier(0.76, 0, 0.24, 1)',
     continuationEasing: 'linear',
+    exitEasing: 'cubic-bezier(0.333333, 0.5, 0.666667, 1)',
+    singleLineEasing: 'cubic-bezier(0.333333, 0, 0.666667, 1)',
     characterScale: 1.12,
     characterMinScale: 0.08,
     enableCharacterScale: true
@@ -137,6 +139,11 @@ export function normalizeConfig(input) {
       continuationEasing: stringOr(
         motion.continuationEasing,
         DEFAULT_CONFIG.motion.continuationEasing
+      ),
+      exitEasing: stringOr(motion.exitEasing, DEFAULT_CONFIG.motion.exitEasing),
+      singleLineEasing: stringOr(
+        motion.singleLineEasing,
+        DEFAULT_CONFIG.motion.singleLineEasing
       ),
       characterScale: clampNumber(
         motion.characterScale,

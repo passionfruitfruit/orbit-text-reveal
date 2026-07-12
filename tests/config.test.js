@@ -35,18 +35,27 @@ test('returns independent objects and preserves exact default center hold', () =
   assert.equal(second.timing.centerHoldMs, 1000);
   assert.equal(second.layout.autoWrap, true);
   assert.ok(second.motion.characterMinScale > 0 && second.motion.characterMinScale < 1);
-  assert.equal(second.motion.easing, 'cubic-bezier(0.5, 0, 0.8, 0.8)');
+  assert.equal(second.motion.easing, 'cubic-bezier(0.333333, 0, 0.666667, 0.5)');
   assert.equal(second.motion.continuationEasing, 'linear');
+  assert.equal(second.motion.exitEasing, 'cubic-bezier(0.333333, 0.5, 0.666667, 1)');
+  assert.equal(second.motion.singleLineEasing, 'cubic-bezier(0.333333, 0, 0.666667, 1)');
 });
 
 test('normalizes wrapping and minimum character scale controls', () => {
   const config = normalizeConfig({
     layout: { autoWrap: false },
-    motion: { characterMinScale: 0, continuationEasing: 'steps(4, end)' }
+    motion: {
+      characterMinScale: 0,
+      continuationEasing: 'steps(4, end)',
+      exitEasing: 'ease-out',
+      singleLineEasing: 'ease-in-out'
+    }
   });
   assert.equal(config.layout.autoWrap, false);
   assert.equal(config.motion.characterMinScale, 0.01);
   assert.equal(config.motion.continuationEasing, 'steps(4, end)');
+  assert.equal(config.motion.exitEasing, 'ease-out');
+  assert.equal(config.motion.singleLineEasing, 'ease-in-out');
 });
 
 test('normalizes optional per-text layout overrides without filling unspecified keys', () => {

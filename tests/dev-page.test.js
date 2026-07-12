@@ -25,6 +25,10 @@ test('developer page exposes continuation easing for cross-line cruising', async
   const html = await readFile(new URL('../dev.html', import.meta.url), 'utf8');
   assert.match(html, /跨行延续缓动/);
   assert.match(html, /data-path=["']motion\.continuationEasing["']/);
+  assert.match(html, /末行减速缓动/);
+  assert.match(html, /data-path=["']motion\.exitEasing["']/);
+  assert.match(html, /单行加减速缓动/);
+  assert.match(html, /data-path=["']motion\.singleLineEasing["']/);
 });
 
 test('developer app wires per-text layout editing and immediate preview controls', async () => {
