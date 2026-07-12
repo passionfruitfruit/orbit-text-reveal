@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  buildPathTimeline,
   computeCubicBezierEndpointSlope,
   computeCubicBezierSlopeAt,
   computeCubicBezierStartSlope,
   computeTraversalTiming,
   computeVisibleLineLayout,
+  locatePathProgress,
   traversalRole
 } from '../src/progressive-layout.js';
 
@@ -26,6 +28,47 @@ test('adding and removing rows keeps every visible block centered', () => {
   assert.equal(two[0].centerY - one[0].centerY, -30);
   assert.equal(three[0].centerY - two[0].centerY, -30);
   assert.equal(two[0].centerY - three[0].centerY, 30);
+});
+
+test('builds cumulative path segments from every row distance', () => {
+  const timeline = buildPathTimeline([100, 50, 150]);
+  assert.equal(timeline.totalDistance, 300);
+  assert.deepEqual(timeline.segments, [
+    { index: 0, distance: 100, start: 0, end: 1 / 3 },
+    { index: 1, distance: 50, start: 1 / 3, end: 1 / 2 },
+    { index: 2, distance: 150, start: 1 / 2, end: 1 }
+  ]);
+  const located = locatePathProgress(timeline, 0.4);
+  assert.equal(located.index, 1);
+  assert.ok(Math.abs(located.localProgress - 0.4) < 1e-9);
+  assert.deepEqual(locatePathProgress(timeline, 1), {
+    index: 2,
+    localProgress: 1
+  });
+});
+
+test('cumulative path stays finite for zero and invalid distances', () => {
+  const timeline = buildPathTimeline([0, Number.NaN, -20, 100]);
+  assert.deepEqual(timeline.segments, [
+    { index: 0, distance: 0, start: 0, end: 0 },
+    { index: 1, distance: 0, start: 0, end: 0 },
+    { index: 2, distance: 0, start: 0, end: 0 },
+    { index: 3, distance: 100, start: 0, end: 1 }
+  ]);
+  assert.deepEqual(locatePathProgress(timeline, 0), {
+    index: 3,
+    localProgress: 0
+  });
+  assert.equal(locatePathProgress(buildPathTimeline([0, 0]), 0.5), null);
+});
+
+test('single row owns the complete cumulative path', () => {
+  const timeline = buildPathTimeline([80]);
+  assert.deepEqual(timeline.segments, [
+    { index: 0, distance: 80, start: 0, end: 1 }
+  ]);
+  assert.deepEqual(locatePathProgress(timeline, -1), { index: 0, localProgress: 0 });
+  assert.deepEqual(locatePathProgress(timeline, 2), { index: 0, localProgress: 1 });
 });
 
 test('assigns entry cruise exit and single roles by traversal position', () => {

@@ -9,6 +9,40 @@ export function computeVisibleLineLayout({ visibleCount, centerY, lineHeightPx }
   });
 }
 
+export function buildPathTimeline(distances) {
+  const normalized = Array.isArray(distances)
+    ? distances.map((distance) => (
+      Number.isFinite(distance) ? Math.max(0, distance) : 0
+    ))
+    : [];
+  const totalDistance = normalized.reduce((total, distance) => total + distance, 0);
+  let cumulativeDistance = 0;
+  const segments = normalized.map((distance, index) => {
+    const start = totalDistance > 0 ? cumulativeDistance / totalDistance : 0;
+    cumulativeDistance += distance;
+    const end = totalDistance > 0 ? cumulativeDistance / totalDistance : 0;
+    return { index, distance, start, end };
+  });
+  return { totalDistance, segments };
+}
+
+export function locatePathProgress(timeline, progress) {
+  if (!timeline || !(timeline.totalDistance > 0) || !Array.isArray(timeline.segments)) {
+    return null;
+  }
+  const clamped = Number.isFinite(progress) ? Math.min(1, Math.max(0, progress)) : 0;
+  const traversable = timeline.segments.filter(({ distance }) => distance > 0);
+  const segment = clamped >= 1
+    ? traversable.at(-1)
+    : traversable.find(({ end }) => clamped < end) ?? traversable.at(-1);
+  if (!segment) return null;
+  const span = segment.end - segment.start;
+  const localProgress = span > 0
+    ? Math.min(1, Math.max(0, (clamped - segment.start) / span))
+    : 0;
+  return { index: segment.index, localProgress };
+}
+
 export function computeCubicBezierEndpointSlope({ x2, y2 }) {
   const horizontal = 1 - x2;
   if (!Number.isFinite(horizontal) || horizontal === 0) return Number.POSITIVE_INFINITY;
