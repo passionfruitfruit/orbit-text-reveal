@@ -312,7 +312,7 @@ git commit -m "test: verify entry cruise exit line speed"
 
 Otherwise commit only the tracked plan record.
 
-- [ ] **Step 5: Push and verify remote parity**
+- [x] **Step 5: Push and verify remote parity**
 
 Run:
 
