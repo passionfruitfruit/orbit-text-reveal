@@ -20,6 +20,7 @@ export const animationConfig = normalizeConfig({
     }
   ],
   timing: {
+    // revealMs / retractMs：完整多行路径的总时长，换行瞬移不占时间。
     revealMs: 900,
     retractMs: 900,
     lineTravelMs: 260,
@@ -49,6 +50,7 @@ export const animationConfig = normalizeConfig({
     fontWeight: 700
   },
   motion: {
+    // singleLineEasing：展开和收回整段时间轴共同使用的加减速曲线。
     easing: 'cubic-bezier(0.333333, 0, 0.666667, 0.5)',
     lineEasing: 'cubic-bezier(0.76, 0, 0.24, 1)',
     continuationEasing: 'linear',

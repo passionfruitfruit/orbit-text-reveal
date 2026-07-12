@@ -51,8 +51,8 @@
         <section class="editor-section" aria-labelledby="timing-title">
           <h3 id="timing-title">时间</h3>
           <div class="field-grid">
-            <label>默认展开 (ms)<input type="number" min="0" max="20000" step="10" data-path="timing.revealMs"></label>
-            <label>默认收回 (ms)<input type="number" min="0" max="20000" step="10" data-path="timing.retractMs"></label>
+            <label>整段展开 (ms)<input type="number" min="0" max="20000" step="10" data-path="timing.revealMs"></label>
+            <label>整段收回 (ms)<input type="number" min="0" max="20000" step="10" data-path="timing.retractMs"></label>
             <label>换行瞬移（无需时长）<input type="text" value="固定" disabled></label>
             <label>中心停留 (ms)<input type="number" min="0" max="20000" step="10" data-path="timing.centerHoldMs"></label>
           </div>
@@ -85,12 +85,10 @@
         </section>
 
         <section class="editor-section" aria-labelledby="motion-title">
-          <h3 id="motion-title">字符形变</h3>
+          <h3 id="motion-title">时间轴与字符形变</h3>
           <div class="field-grid">
-            <label class="field-wide">展开缓动<input type="text" data-path="motion.easing"></label>
-            <label class="field-wide">跨行延续缓动<input type="text" data-path="motion.continuationEasing"></label>
-            <label class="field-wide">末行减速缓动<input type="text" data-path="motion.exitEasing"></label>
-            <label class="field-wide">单行加减速缓动<input type="text" data-path="motion.singleLineEasing"></label>
+            <label class="field-wide">整段时间轴缓动<input type="text" data-path="motion.singleLineEasing"></label>
+            <p class="field-wide">旧版逐行缓动字段仅为配置兼容保留，不再驱动动画。</p>
             <label>字符最小比例<input type="number" min="0.01" max="1" step="0.01" data-path="motion.characterMinScale"></label>
             <label class="check-field"><input type="checkbox" data-path="motion.enableCharacterScale">启用字符形变</label>
             <label class="check-field field-wide"><input type="checkbox" data-path="accessibility.reducedMotionRotate">减少动效时仍轮换文本</label>

@@ -42,7 +42,7 @@ npm test
       scale: 1,
       autoWrap: false
     },
-    motion: { continuationEasing: 'linear' }
+    motion: { singleLineEasing: 'cubic-bezier(0.333333, 0, 0.666667, 1)' }
   };
 </script>
 ```
@@ -61,8 +61,8 @@ npm test
 | `texts[].revealMs` | `timing.revealMs` | 可选的单条展开时长 |
 | `texts[].retractMs` | `timing.retractMs` | 可选的单条收回时长 |
 | `texts[].layout` | 使用全局 `layout` | 可选的单条布局覆盖；支持下列全部 `layout.*` 字段 |
-| `timing.revealMs` | `900` | 最长行按展开巡航速度走完的参考时间，毫秒 |
-| `timing.retractMs` | `900` | 最长行按收回巡航速度走完的参考时间，毫秒 |
+| `timing.revealMs` | `900` | 完整多行展开的总时长，毫秒 |
+| `timing.retractMs` | `900` | 完整多行收回的总时长，毫秒 |
 | `timing.lineTravelMs` | `260` | 兼容旧配置；当前跨行按参考动画直接瞬移 |
 | `timing.centerHoldMs` | `1000` | 圆球回到中央后的停留时间 |
 | `layout.maxWidth` | `680` | 单行最大宽度；超出后自动换行 |
@@ -79,18 +79,18 @@ npm test
 | `style.background` | `#ecebe8` | 舞台背景颜色 |
 | `style.fontFamily` | 系统无衬线 | 字体族 |
 | `style.fontWeight` | `700` | 字重 |
-| `motion.easing` | `cubic-bezier(0.333333, 0, 0.666667, 0.5)` | 第一条遍历从静止加速到巡航速度 |
-| `motion.continuationEasing` | `linear` | 换行后保持巡航速度，不重复慢启动 |
-| `motion.exitEasing` | `cubic-bezier(0.333333, 0.5, 0.666667, 1)` | 最后一条遍历从巡航速度减速到静止 |
-| `motion.singleLineEasing` | `cubic-bezier(0.333333, 0, 0.666667, 1)` | 单行文本先加速再减速 |
+| `motion.easing` | `cubic-bezier(0.333333, 0, 0.666667, 0.5)` | 旧版兼容字段，不再驱动全局时间轴 |
+| `motion.continuationEasing` | `linear` | 旧版兼容字段，不再驱动全局时间轴 |
+| `motion.exitEasing` | `cubic-bezier(0.333333, 0.5, 0.666667, 1)` | 旧版兼容字段，不再驱动全局时间轴 |
+| `motion.singleLineEasing` | `cubic-bezier(0.333333, 0, 0.666667, 1)` | 整段展开与收回使用的完整加速—减速曲线 |
 | `motion.lineEasing` | 平滑贝塞尔曲线 | 兼容旧配置；当前跨行直接瞬移 |
 | `motion.characterMinScale` | `0.08` | 字符刚脱出或进入圆球时的最小比例 |
 | `motion.enableCharacterScale` | `true` | 是否启用局部字符形变 |
 | `accessibility.reducedMotionRotate` | `false` | 减少动态效果时是否仍轮换文本 |
 
-每段文本先以最长一行计算统一巡航速度。展开时第一行加速、中间行匀速、最后一行减速；收回时按反向遍历顺序执行同样的 `加速 → 匀速 → 减速`。短的底行只会更快完成，不会降低随后各行的速度。
+每段文本的所有横向行程会按像素距离连接成一条全局时间轴。展开只在整段开头加速、整段末尾减速；收回沿完全相反的累计路径执行同一套完整曲线。每行占用的进度与其横向距离成正比，换行跳转不占用时间，也不会重新触发加速或减速。
 
-默认加速、减速和单行曲线的边界/峰值斜率均为 `1.5`，组件会把对应行的同距离匀速时间乘以 `1.5`，因此与中间 `linear` 行在边界处速度连续。自定义曲线时若要保持严格连续，需要同时保持相同的边界斜率。
+`motion.singleLineEasing` 是当前唯一驱动横向时间轴的缓动字段，名称为兼容既有配置而保留。`motion.easing`、`motion.continuationEasing`、`motion.exitEasing` 和 `timing.lineTravelMs` 都是旧版兼容字段，不再驱动全局时间轴。
 
 ## 常用修改
 
@@ -198,7 +198,7 @@ orbit-text-reveal {
 - `src/text-layout.js`：字符分段和换行。
 - `src/geometry.js`：对称几何与可逆路径。
 - `src/motion.js`：圆球遮挡、水平帧与逐字缩放。
-- `src/progressive-layout.js`：逐行累积居中与跨行延续速度。
+- `src/progressive-layout.js`：逐行累积居中与全局路径进度映射。
 - `src/stage-layout.js`：响应式舞台拟合。
 - `tests/browser.html`：真实浏览器集成测试入口。
 

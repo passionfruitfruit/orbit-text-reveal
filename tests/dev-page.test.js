@@ -21,14 +21,21 @@ test('developer page exposes all approved preview controls', async () => {
   }
 });
 
-test('developer page exposes continuation easing for cross-line cruising', async () => {
+test('developer page exposes one whole-pass timeline control', async () => {
   const html = await readFile(new URL('../dev.html', import.meta.url), 'utf8');
-  assert.match(html, /跨行延续缓动/);
-  assert.match(html, /data-path=["']motion\.continuationEasing["']/);
-  assert.match(html, /末行减速缓动/);
-  assert.match(html, /data-path=["']motion\.exitEasing["']/);
-  assert.match(html, /单行加减速缓动/);
+  assert.match(html, /整段展开 \(ms\)/);
+  assert.match(html, /整段收回 \(ms\)/);
+  assert.match(html, /整段时间轴缓动/);
   assert.match(html, /data-path=["']motion\.singleLineEasing["']/);
+  assert.match(html, /旧版逐行缓动字段仅为配置兼容保留/);
+  assert.doesNotMatch(html, /data-path=["']motion\.(?:easing|continuationEasing|exitEasing)["']/);
+});
+
+test('README documents total-duration global timeline semantics', async () => {
+  const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
+  assert.match(readme, /完整多行展开的总时长/);
+  assert.match(readme, /换行跳转不占用时间/);
+  assert.match(readme, /旧版兼容字段，不再驱动全局时间轴/);
 });
 
 test('developer app wires per-text layout editing and immediate preview controls', async () => {
