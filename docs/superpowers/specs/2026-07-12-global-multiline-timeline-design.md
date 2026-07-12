@@ -19,15 +19,15 @@ Make each reveal and retract pass behave as one continuous horizontal timeline. 
 
 ### Pure timeline model
 
-Add a pure cumulative-path helper in `src/progressive-layout.js`. Given row distances and a total duration, it produces stable segments containing cumulative start/end progress and duration boundaries. Zero-distance rows remain finite and do not consume duration.
+Add a pure cumulative-path helper in `src/progressive-layout.js`. Given row distances, it produces stable segments containing cumulative start/end distance fractions. Zero-distance rows remain finite and occupy no path fraction. A second pure helper maps a whole-pass distance progress to the active segment and its local row progress.
 
-The helper also maps a local row progress to the global cumulative progress and evaluates the configured whole-pass easing. The local animation for a segment is derived from the difference between the eased global values at that segment's boundaries. This preserves a single acceleration/cruise/deceleration envelope while allowing the existing row-by-row DOM masks and glyph transforms to remain isolated.
+The component runs one invisible WAAPI clock for the complete pass. The clock uses the configured whole-pass easing and total direction duration, so `getComputedTiming().progress` is the eased cumulative distance progress. A `requestAnimationFrame` loop maps that progress into the active row and applies the existing row frame, mask, text, ball, and glyph calculations. This is exact for every browser-supported CSS easing and preserves the existing animation registry used by pause, resume, abort, and destroy.
 
 ### Component orchestration
 
-`src/orbit-text-reveal.js` continues to animate one row at a time and continues to emit the existing `reveal-line`, `line-jump`, and `retract-line` states. Before either pass it builds one timeline from all row distances.
+`src/orbit-text-reveal.js` continues to expose the existing `reveal-line`, `line-jump`, and `retract-line` state sequence. Before either pass it builds one timeline from all row distances, then runs one invisible clock animation.
 
-For reveal, segments are consumed top to bottom. For retract, the same geometric segments are consumed bottom to top with reversed local progress. Line jumps remain immediate state transitions between segments. The total of all segment durations equals the configured direction duration.
+For reveal, clock progress maps into segments top to bottom. For retract, the same geometric segments are mapped bottom to top with reversed local progress. When a frame crosses a segment boundary, the component commits the completed row, emits the instantaneous line-jump state, updates line visibility/centering and ball placement, then emits the next line state. One clock duration is exactly the configured direction duration.
 
 ### Configuration
 
@@ -40,8 +40,8 @@ The default whole-pass curve remains `cubic-bezier(0.333333, 0, 0.666667, 1)`.
 1. Measure and fit every rendered row.
 2. Collect its horizontal ball travel distance.
 3. Build cumulative segments from the distance sum and direction duration.
-4. For each segment, derive the local keyframe progression from the global whole-pass curve.
-5. Run the existing ball, mask, text, and glyph animations for that segment.
+4. Run one invisible WAAPI clock using the global whole-pass curve.
+5. Map every eased clock frame into a segment and local progress, then apply the existing ball, mask, text, and glyph frame calculations.
 6. Jump instantly to the next row and continue at the next global progress boundary.
 7. Hold, reverse the same path, recenter exactly, then advance the text queue.
 
