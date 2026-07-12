@@ -31,7 +31,7 @@
 - Changes: `computeTraversalTiming({ distance, referenceDistance, referenceDuration, role, easing, continuationEasing, exitEasing, singleLineEasing, speedFactors? }): { duration, easing, role }`.
 - Produces: `DEFAULT_SPEED_FACTORS = { entry: 1.5, cruise: 1, exit: 1.5, single: 1.5 }`.
 
-- [ ] **Step 1: Replace the old boolean-first tests with failing role tests**
+- [x] **Step 1: Replace the old boolean-first tests with failing role tests**
 
 Add assertions:
 
@@ -53,13 +53,13 @@ single(distance: 50) -> duration 375, easing single, role single
 
 Also assert a 20px first retract row and a later 100px row share cruise speed `0.2px/ms`: entry endpoint absolute speed is `(20 / 150) × 1.5 = 0.2`, later cruise speed is `100 / 500 = 0.2`.
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
 Run: `node --test tests/progressive-layout.test.js`
 
 Expected: FAIL because `traversalRole` and the role-based signature do not exist.
 
-- [ ] **Step 3: Implement role selection and timing**
+- [x] **Step 3: Implement role selection and timing**
 
 Add:
 
@@ -106,13 +106,13 @@ export function computeTraversalTiming({
 }
 ```
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 Run: `node --test tests/progressive-layout.test.js`
 
 Expected: all progressive-layout tests PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/progressive-layout.js tests/progressive-layout.test.js
@@ -138,7 +138,7 @@ git commit -m "fix: derive row timing from shared cruise speed"
 - Produces normalized `motion.exitEasing`: `cubic-bezier(0.333333, 0.5, 0.666667, 1)`.
 - Produces normalized `motion.singleLineEasing`: `cubic-bezier(0.333333, 0, 0.666667, 1)`.
 
-- [ ] **Step 1: Write failing config and developer-page tests**
+- [x] **Step 1: Write failing config and developer-page tests**
 
 Assert normalized defaults and production config contain all four exact easing strings. Assert `dev.html` contains:
 
@@ -149,17 +149,17 @@ Assert normalized defaults and production config contain all four exact easing s
 
 with labels `末行减速缓动` and `单行加减速缓动`.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run: `node --test tests/config.test.js tests/production-config.test.js tests/dev-page.test.js`
 
 Expected: FAIL because the new fields and controls are absent and entry easing uses the previous value.
 
-- [ ] **Step 3: Add and normalize configuration fields**
+- [x] **Step 3: Add and normalize configuration fields**
 
 In `DEFAULT_CONFIG.motion`, production `config.js`, and `normalizeConfig()` add the exact values from the interface. Preserve arbitrary string overrides using `stringOr`.
 
-- [ ] **Step 4: Add developer controls**
+- [x] **Step 4: Add developer controls**
 
 Under the existing motion fields in `dev.html`, add:
 
@@ -174,17 +174,17 @@ Under the existing motion fields in `dev.html`, add:
 </label>
 ```
 
-- [ ] **Step 5: Document timing semantics**
+- [x] **Step 5: Document timing semantics**
 
 Document that `revealMs/retractMs` define the longest row's cruise-time reference; entry/exit/single rows use a `1.5` duration factor to match cruise boundary speed. Document all four easing fields and the role order in both directions.
 
-- [ ] **Step 6: Verify GREEN**
+- [x] **Step 6: Verify GREEN**
 
 Run: `node --test tests/config.test.js tests/production-config.test.js tests/dev-page.test.js tests/dev-app.test.js`
 
 Expected: all selected tests PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/config.js config.js dev.html README.md tests/config.test.js tests/production-config.test.js tests/dev-page.test.js
@@ -205,7 +205,7 @@ git commit -m "feat: configure entry cruise exit easing"
 - Consumes `traversalRole()` and role-based `computeTraversalTiming()`.
 - Produces WAAPI easing/duration order `entry, cruise..., exit` for either direction and `single` for one row.
 
-- [ ] **Step 1: Write failing source and browser invariants**
+- [x] **Step 1: Write failing source and browser invariants**
 
 Require component source to calculate maximum reference distance, call `traversalRole`, and pass `exitEasing` plus `singleLineEasing` to timing. Browser runner must record every reveal/retract row timing and assert:
 
@@ -217,13 +217,13 @@ single row: singleLineEasing
 
 Use unequal distances with a short bottom row. For every boundary, calculate the absolute speed from `distance / duration × normalized boundary slope` and assert it equals `referenceDistance / directionDuration`.
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 Run: `node --test tests/orbit-component-source.test.js tests/final-browser-invariants.test.js`
 
 Expected: FAIL because the component still passes boolean `first` and uses first-traversed distance as baseline.
 
-- [ ] **Step 3: Import role helper and calculate shared reference distance**
+- [x] **Step 3: Import role helper and calculate shared reference distance**
 
 Import `traversalRole`. Add:
 
@@ -235,7 +235,7 @@ Import `traversalRole`. Add:
 
 Calculate it once for the current item and use it for both reveal and retract timing.
 
-- [ ] **Step 4: Assign reveal roles by traversal position**
+- [x] **Step 4: Assign reveal roles by traversal position**
 
 For reveal index `index`, compute:
 
@@ -245,7 +245,7 @@ const role = traversalRole({ position: index, count: this.#lineViews.length });
 
 Pass role, reference distance, reveal duration, and all four easing values to timing.
 
-- [ ] **Step 5: Assign retract roles by reversed traversal position**
+- [x] **Step 5: Assign retract roles by reversed traversal position**
 
 For retract raw row index `index`, compute:
 
@@ -256,13 +256,13 @@ const role = traversalRole({ position, count: this.#lineViews.length });
 
 Pass role, the same maximum reference distance, retract duration, and all four easing values.
 
-- [ ] **Step 6: Verify Node GREEN**
+- [x] **Step 6: Verify Node GREEN**
 
 Run: `npm test`
 
 Expected: every Node/source test PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/orbit-text-reveal.js tests/orbit-component-source.test.js tests/final-browser-invariants.test.js tests/browser-tests.js
@@ -279,7 +279,7 @@ git commit -m "fix: accelerate first row and decelerate final row"
 **Interfaces:**
 - Produces verified local and GitHub `main` state.
 
-- [ ] **Step 1: Run all Node and syntax checks**
+- [x] **Step 1: Run all Node and syntax checks**
 
 Run:
 
@@ -293,15 +293,15 @@ git diff --check
 
 Expected: all tests PASS and all checks exit `0`.
 
-- [ ] **Step 2: Run fresh browser regression**
+- [x] **Step 2: Run fresh browser regression**
 
 Open a fresh versioned `tests/browser.html`. Verify `ALL TESTS PASSED`, record the PASS count, and confirm zero console `error`/`warning` entries.
 
-- [ ] **Step 3: Visually inspect both directions**
+- [x] **Step 3: Visually inspect both directions**
 
 Use a multiline item with a short bottom row. Confirm reveal accelerates only on top row and decelerates only on bottom row; retract accelerates only on bottom row, cruises at normal speed on intermediate rows, and decelerates only on top row.
 
-- [ ] **Step 4: Record completed plan and commit cache-only changes**
+- [x] **Step 4: Record completed plan and commit cache-only changes**
 
 Mark every completed checkbox. If `tests/browser.html` changed, commit it with the plan record:
 
