@@ -755,6 +755,12 @@ async function runProductionBoundaryCheck() {
       })})`
     );
     check(snapshot.geometry.lines[0].graphemes.length === 10, 'ten-character line preserves every grapheme at 320px');
+    assertClose(
+      snapshot.geometry.ballSize,
+      19 * probe.config.layout.ballSizeEm,
+      0.1,
+      'component geometry uses the resolved 19px fluid font size'
+    );
     check(geometryFitsBounds(snapshot.geometry, hostRect.width, hostRect.height, 16), 'ten characters fit 16px margin at 320px');
   }
 

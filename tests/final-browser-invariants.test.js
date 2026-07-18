@@ -46,6 +46,7 @@ test('browser runner names every final handoff invariant', async () => {
     'no horizontal overflow',
     'ten characters form one line at 320px',
     'ten-character line preserves every grapheme at 320px',
+    'component geometry uses the resolved 19px fluid font size',
     'ten characters fit 16px margin at 320px',
     'font size 19px at 320px'
   ];

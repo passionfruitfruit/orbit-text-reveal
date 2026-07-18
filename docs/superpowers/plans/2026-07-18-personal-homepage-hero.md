@@ -144,7 +144,7 @@ In `src/base.css`:
     40vw,
     min(77.7777778vw, calc(32.4444444vw + 145.0666667px))
   );
-  --orbit-stage-height: 100dvh;
+  --orbit-stage-height: 100svh;
   --orbit-font-size: clamp(19px, calc(2.8125vw + 10px), 64px);
   --orbit-page-x: 0px;
   --orbit-page-y: 0px;
@@ -152,7 +152,7 @@ In `src/base.css`:
 }
 ```
 
-Use `height: 100dvh` with `100svh` fallback declared immediately before it. Keep the existing fixed `top: 50%`, `left: 50%`, and `translate(-50%, -50%)` centering. Remove the mobile media rule that replaces the stage width; no breakpoint should alter the formula.
+On the host, declare `height: min(var(--orbit-stage-height), 100svh)` immediately before `height: min(var(--orbit-stage-height), 100dvh)` so unsupported `dvh` values fall back at the validated property level. Keep the existing fixed `top: 50%`, `left: 50%`, and `translate(-50%, -50%)` centering. Remove the mobile media rule that replaces the stage width; no breakpoint should alter the formula.
 
 Apply `--orbit-font-size` on the host. Extend the component's existing CSS-variable reader so `calc()` and `clamp()` values fall back to the browser-resolved `getComputedStyle(host).fontSize` pixel value; keep simple `px` and `em` handling unchanged.
 

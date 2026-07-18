@@ -6,7 +6,6 @@
     min(77.7777778vw, calc(32.4444444vw + 145.0666667px))
   );
   --orbit-stage-height: 100svh;
-  --orbit-stage-height: 100dvh;
   --orbit-font-size: clamp(19px, calc(2.8125vw + 10px), 64px);
   --orbit-page-x: 0px;
   --orbit-page-y: 0px;
@@ -32,7 +31,8 @@ orbit-text-reveal {
   top: 50%;
   left: 50%;
   width: min(var(--orbit-stage-width), 100vw);
-  height: var(--orbit-stage-height);
+  height: min(var(--orbit-stage-height), 100svh);
+  height: min(var(--orbit-stage-height), 100dvh);
   font-size: var(--orbit-font-size);
   overflow: clip;
   transform: translate(
