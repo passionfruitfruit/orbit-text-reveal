@@ -1,8 +1,13 @@
 :root {
   color-scheme: light;
-  --orbit-page-background: #ecebe8;
-  --orbit-stage-width: 100vw;
+  --orbit-page-background: #f7f2ef;
+  --orbit-stage-width: max(
+    40vw,
+    min(77.7777778vw, calc(32.4444444vw + 145.0666667px))
+  );
   --orbit-stage-height: 100svh;
+  --orbit-stage-height: 100dvh;
+  --orbit-font-size: clamp(19px, calc(2.8125vw + 10px), 64px);
   --orbit-page-x: 0px;
   --orbit-page-y: 0px;
   --orbit-page-scale: 1;
@@ -19,6 +24,7 @@ body {
 
 body {
   min-height: 100svh;
+  min-height: 100dvh;
 }
 
 orbit-text-reveal {
@@ -26,7 +32,8 @@ orbit-text-reveal {
   top: 50%;
   left: 50%;
   width: min(var(--orbit-stage-width), 100vw);
-  height: min(var(--orbit-stage-height), 100svh);
+  height: var(--orbit-stage-height);
+  font-size: var(--orbit-font-size);
   overflow: clip;
   transform: translate(
       calc(-50% + var(--orbit-page-x)),
@@ -39,11 +46,3 @@ orbit-text-reveal {
 orbit-text-reveal[hidden] {
   display: none;
 }
-
-@media (max-width: 720px) {
-  orbit-text-reveal {
-    width: min(var(--orbit-stage-width), calc(100vw - 2rem));
-    height: min(var(--orbit-stage-height), calc(100svh - 2rem));
-  }
-}
-

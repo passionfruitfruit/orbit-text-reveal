@@ -234,14 +234,16 @@ test('module entry strictly waits for fonts before loading, assigning, and start
 
 test('base CSS exposes stage size and page transform variables', async () => {
   const source = await sourceOf('src/base.css');
-  for (const variable of [
+  const requiredVariables = [
     '--orbit-stage-width',
     '--orbit-stage-height',
+    '--orbit-font-size',
     '--orbit-page-x',
     '--orbit-page-y',
     '--orbit-page-scale'
-  ]) {
+  ];
+  for (const variable of requiredVariables) {
     assert.match(source, new RegExp(variable));
   }
-  assert.match(source, /@media\s*\(max-width:/);
+  assert.doesNotMatch(source, /calc\(100vw - 2rem\)/);
 });

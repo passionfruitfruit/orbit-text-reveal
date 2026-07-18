@@ -1,4 +1,4 @@
-import '../src/orbit-text-reveal.js?v=20260712-2';
+import '../src/orbit-text-reveal.js?v=20260718-1';
 
 const results = document.querySelector('#results');
 const host = document.querySelector('#host');
@@ -11,6 +11,9 @@ const check = (condition, message) => {
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
 const nearlyEqual = (actual, expected, tolerance = 0.5) => Math.abs(actual - expected) <= tolerance;
+const assertClose = (actual, expected, tolerance, message) => {
+  check(Math.abs(actual - expected) <= tolerance, message);
+};
 const samePoint = (actual, expected) => actual.x === expected.x && actual.y === expected.y;
 
 function geometryFitsBounds(geometry, availableWidth, availableHeight, safeMargin) {
@@ -697,6 +700,65 @@ async function runProductionBoundaryCheck() {
   for (const forbidden of ['dev-app', 'textarea', 'Export configuration', '导出配置']) {
     check(!source.includes(forbidden), `production page excludes ${forbidden}`);
   }
+
+  const frame = document.createElement('iframe');
+  frame.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;border:0;visibility:hidden;pointer-events:none';
+  frame.src = `/index.html?browser-test=${Date.now()}`;
+  document.body.append(frame);
+  await new Promise((resolve, reject) => {
+    frame.addEventListener('load', resolve, { once: true });
+    frame.addEventListener('error', () => reject(new Error('production page iframe failed to load')), { once: true });
+  });
+
+  const frameWindow = frame.contentWindow;
+  const frameDocument = frame.contentDocument;
+  const probe = frameDocument.querySelector('orbit-text-reveal');
+  check(Boolean(probe), 'production frame exposes the real component host');
+  await probe.ready;
+  await nextFrame();
+  await nextFrame();
+
+  const hostRect = probe.getBoundingClientRect();
+  const expectedWidth = Math.max(
+    frameWindow.innerWidth * 0.4,
+    Math.min(
+      frameWindow.innerWidth * 7 / 9,
+      frameWindow.innerWidth * 0.324444444 + 145.0666667
+    )
+  );
+  assertClose(hostRect.width, expectedWidth, 1, `stage width at ${frameWindow.innerWidth}px`);
+  assertClose(hostRect.left + hostRect.width / 2, frameWindow.innerWidth / 2, 1, 'horizontal center');
+  assertClose(hostRect.top + hostRect.height / 2, frameWindow.innerHeight / 2, 1, 'vertical center');
+  check(frameDocument.documentElement.scrollWidth === frameWindow.innerWidth, 'no horizontal overflow');
+
+  if (frameWindow.innerWidth === 320) {
+    const fontStyle = frameWindow.getComputedStyle(probe).fontSize;
+    assertClose(parseFloat(fontStyle), 19, 0.1, `font size 19px at 320px: ${fontStyle}`);
+
+    probe.updateConfig({
+      texts: [{ text: '一二三四五六七八九十', holdMs: 100 }],
+      layout: { autoWrap: true }
+    }, { immediate: true });
+    await probe.ready;
+    await nextFrame();
+    await nextFrame();
+
+    const snapshot = probe.debugSnapshot();
+    check(
+      snapshot.geometry.lines.length === 1,
+      `ten characters form one line at 320px (${JSON.stringify({
+        lines: snapshot.geometry.lines.map(({ text, width }) => ({ text, width })),
+        autoFitScale: snapshot.autoFitScale,
+        resolvedScale: snapshot.resolvedScale,
+        hostWidth: hostRect.width,
+        hostHeight: hostRect.height
+      })})`
+    );
+    check(snapshot.geometry.lines[0].graphemes.length === 10, 'ten-character line preserves every grapheme at 320px');
+    check(geometryFitsBounds(snapshot.geometry, hostRect.width, hostRect.height, 16), 'ten characters fit 16px margin at 320px');
+  }
+
+  frame.remove();
 }
 
 async function runDeveloperPageCheck() {

@@ -313,11 +313,14 @@ export class OrbitTextReveal extends HTMLElement {
 
     const externalStyle = getComputedStyle(this);
     const layout = { ...this.#config.layout, ...item?.layout };
-    layout.fontSize = cssLength(
-      externalStyle.getPropertyValue('--orbit-font-size'),
-      layout.fontSize,
-      layout.fontSize
-    );
+    const externalFontSize = externalStyle.getPropertyValue('--orbit-font-size').trim();
+    if (externalFontSize) {
+      layout.fontSize = cssLength(
+        externalFontSize,
+        layout.fontSize,
+        cssLength(externalStyle.fontSize, layout.fontSize, layout.fontSize)
+      );
+    }
     const ballSize = cssLength(
       externalStyle.getPropertyValue('--orbit-ball-size'),
       layout.fontSize,

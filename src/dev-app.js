@@ -282,6 +282,6 @@ export function startDeveloperPage(documentRef = document, environment = {}) {
 }
 
 if (typeof document !== 'undefined') {
-  await import('./orbit-text-reveal.js?v=20260711-7');
+  await import('./orbit-text-reveal.js?v=20260718-1');
   startDeveloperPage(document, globalThis.__ORBIT_DEV_TEST_ENV__);
 }

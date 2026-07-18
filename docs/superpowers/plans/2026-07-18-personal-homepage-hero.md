@@ -15,7 +15,7 @@
 - Text order and characters must exactly match the six entries in the approved spec.
 - Only `粉骨碎身浑不怕\n要留清白在人间` has a manual newline.
 - Stage width is `max(40vw, min(77.7777778vw, calc(32.4444444vw + 145.0666667px)))`.
-- Font size is `clamp(20px, calc(2.75vw + 11.2px), 64px)`.
+- Font size is `clamp(19px, calc(2.8125vw + 10px), 64px)` so ten Chinese characters still fit beside the ball and safety margins at 320px.
 - The stage is horizontally and vertically centered in the real viewport with no more than 1px error.
 - Existing animation path, whole-pass timing, exact recentering, accessibility, and developer-page separation remain unchanged.
 - Do not modify files outside those explicitly owned by a task.
@@ -101,7 +101,7 @@ Read `src/base.css` in `tests/production-page.test.js` and assert it contains th
 
 ```js
 assert.match(css, /--orbit-stage-width:\s*max\(40vw,\s*min\(77\.7777778vw,\s*calc\(32\.4444444vw \+ 145\.0666667px\)\)\)/s);
-assert.match(css, /--orbit-font-size:\s*clamp\(20px,\s*calc\(2\.75vw \+ 11\.2px\),\s*64px\)/s);
+assert.match(css, /--orbit-font-size:\s*clamp\(19px,\s*calc\(2\.8125vw \+ 10px\),\s*64px\)/s);
 assert.match(css, /--orbit-page-background:\s*#f7f2ef/);
 assert.match(css, /height:\s*100dvh/);
 ```
@@ -124,7 +124,7 @@ assertClose(hostRect.top + hostRect.height / 2, innerHeight / 2, 1, 'vertical ce
 assert.equal(document.documentElement.scrollWidth, innerWidth, 'no horizontal overflow');
 ```
 
-When `innerWidth === 320`, resolve `--orbit-font-size` and assert `20px`. Mount a dedicated ten-character fixture `一二三四五六七八九十`, await `ready`, and verify its geometry contains exactly one line, fits the existing 16px safety bounds, and has no auto-generated second line. A small automatic fit below the CSS request is acceptable because the normalized `ballGapEm` and ball must also fit.
+When `innerWidth === 320`, resolve `--orbit-font-size` and assert `19px`. Mount a dedicated ten-character fixture `一二三四五六七八九十`, await `ready`, and verify its geometry contains exactly one line, fits the existing 16px safety bounds, and has no auto-generated second line.
 
 - [ ] **Step 3: Verify RED**
 
@@ -145,7 +145,7 @@ In `src/base.css`:
     min(77.7777778vw, calc(32.4444444vw + 145.0666667px))
   );
   --orbit-stage-height: 100dvh;
-  --orbit-font-size: clamp(20px, calc(2.75vw + 11.2px), 64px);
+  --orbit-font-size: clamp(19px, calc(2.8125vw + 10px), 64px);
   --orbit-page-x: 0px;
   --orbit-page-y: 0px;
   --orbit-page-scale: 1;
@@ -154,7 +154,7 @@ In `src/base.css`:
 
 Use `height: 100dvh` with `100svh` fallback declared immediately before it. Keep the existing fixed `top: 50%`, `left: 50%`, and `translate(-50%, -50%)` centering. Remove the mobile media rule that replaces the stage width; no breakpoint should alter the formula.
 
-Apply `--orbit-font-size` on the host so the Web Component reads it through its existing CSS-variable interface. Do not modify component JavaScript.
+Apply `--orbit-font-size` on the host. Extend the component's existing CSS-variable reader so `calc()` and `clamp()` values fall back to the browser-resolved `getComputedStyle(host).fontSize` pixel value; keep simple `px` and `em` handling unchanged.
 
 - [ ] **Step 5: Verify GREEN**
 

@@ -45,3 +45,14 @@ test('local preview server binds explicitly to IPv4 loopback', async () => {
   assert.match(readme, /http:\/\/127\.0\.0\.1:4173\/index\.html/);
   assert.doesNotMatch(readme, /http:\/\/localhost:4173/);
 });
+
+test('base.css declares continuous fluid stage width and font size', async () => {
+  const css = await readFile(new URL('../src/base.css', import.meta.url), 'utf8');
+  assert.match(css, /--orbit-stage-width:\s*max\(\s*40vw,\s*min\(77\.7777778vw,\s*calc\(32\.4444444vw \+ 145\.0666667px\)\)\s*\)/s);
+  assert.match(css, /--orbit-font-size:\s*clamp\(19px,\s*calc\(2\.8125vw \+ 10px\),\s*64px\)/s);
+  assert.match(css, /--orbit-page-background:\s*#f7f2ef/);
+  assert.match(css, /--orbit-stage-height:\s*100svh;\s*--orbit-stage-height:\s*100dvh;/s);
+  assert.match(css, /min-height:\s*100svh;\s*min-height:\s*100dvh;/s);
+  assert.match(css, /height:\s*var\(--orbit-stage-height\)/);
+  assert.doesNotMatch(css, /calc\(100vw - 2rem\)/);
+});
