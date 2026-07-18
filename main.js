@@ -1,6 +1,6 @@
 import { animationConfig, platformConfig } from './config.js?v=20260718-3';
  import { renderPlatformCards } from './src/platform-renderer.js?v=20260718-3';
- import { createIntroScrollController } from './src/intro-scroll.js?v=20260718-3';
+ import { createIntroScrollController } from './src/intro-scroll.js?v=20260718-4';
 
 export async function startProductionPage({
    documentRef = globalThis.document,

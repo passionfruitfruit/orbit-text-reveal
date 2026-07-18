@@ -1,6 +1,11 @@
  import assert from 'node:assert/strict';
  import test from 'node:test';
-import { clampProgress, computeIntroFrame, createIntroScrollController } from '../src/intro-scroll.js';
+import {
+  advanceDampedProgress,
+  clampProgress,
+  computeIntroFrame,
+  createIntroScrollController
+} from '../src/intro-scroll.js';
 
  test('clamps intro progress and reaches exact Orbit endpoints', () => {
    assert.equal(clampProgress(-1), 0);
@@ -20,6 +25,17 @@ test('platforms fade after 0.62 and overshoot before settling', () => {
    assert.equal(computeIntroFrame(1, { width: 1280, height: 800 }).platformTranslateY, 0);
 });
 
+test('damped progress is monotonic and frame-rate independent', () => {
+  const oneFrame = advanceDampedProgress(0, 1, 16, 72);
+  const firstHalf = advanceDampedProgress(0, 1, 8, 72);
+  const twoHalves = advanceDampedProgress(firstHalf, 1, 8, 72);
+
+  assert.ok(oneFrame > 0 && oneFrame < 1);
+  assert.ok(twoHalves > firstHalf && twoHalves < 1);
+  assert.ok(Math.abs(oneFrame - twoHalves) < 1e-12);
+  assert.equal(advanceDampedProgress(0.99999, 1, 16, 72), 1);
+});
+
 function createControllerHarness({ reduced = false } = {}) {
   const listeners = new Map();
   const rafs = new Map();
@@ -28,22 +44,32 @@ function createControllerHarness({ reduced = false } = {}) {
   let nextRaf = 1;
   let nextTimer = 1;
   let sequenceTop = 0;
+  const media = {
+    matches: reduced,
+    addEventListener(type, listener) { this.listener = listener; },
+    removeEventListener(type, listener) { if (this.listener === listener) this.listener = null; },
+    setMatches(value) {
+      this.matches = value;
+      this.listener?.({ matches: value });
+    }
+  };
   const windowRef = {
     innerWidth: 1920,
     innerHeight: 1080,
-    matchMedia: () => ({
-      matches: reduced,
-      addEventListener(type, listener) { this.listener = listener; },
-      removeEventListener(type, listener) { if (this.listener === listener) this.listener = null; }
-    }),
+    matchMedia: () => media,
     addEventListener(type, listener) { listeners.set(type, listener); },
     removeEventListener(type, listener) { if (listeners.get(type) === listener) listeners.delete(type); },
     requestAnimationFrame(callback) { const id = nextRaf++; rafs.set(id, callback); return id; },
     cancelAnimationFrame(id) { rafs.delete(id); },
     setTimeout(callback, delay) { const id = nextTimer++; timers.set(id, { callback, delay }); return id; },
     clearTimeout(id) { timers.delete(id); },
-    scrollTo(options) { scrollCalls.push(options); },
-    flushRaf() { for (const [id, callback] of [...rafs]) { rafs.delete(id); callback(); } },
+    scrollTo(options) { scrollCalls.push(options); sequenceTop = -options.top; },
+    flushRaf(timestamp = 0) {
+      for (const [id, callback] of [...rafs]) {
+        rafs.delete(id);
+        callback(timestamp);
+      }
+    },
     runTimer() { const [entry] = timers; if (!entry) return; timers.delete(entry[0]); entry[1].callback(); }
   };
   const host = { style: { values: {}, setProperty(name, value) { this.values[name] = value; } } };
@@ -57,7 +83,7 @@ function createControllerHarness({ reduced = false } = {}) {
   };
   const sequence = { scrollHeight: 2080, getBoundingClientRect: () => ({ top: sequenceTop }) };
   return {
-    windowRef, host, platforms, sequence, listeners, rafs, timers, scrollCalls,
+    windowRef, host, platforms, sequence, listeners, rafs, timers, scrollCalls, media,
     setSequenceTop(value) { sequenceTop = value; }
   };
 }
@@ -76,6 +102,41 @@ test('controller initializes platform section hidden and writes variables on own
   assert.equal(harness.rafs.size, 0);
 });
 
+test('controller damps sparse scroll updates across animation frames', () => {
+  const harness = createControllerHarness();
+  const controller = createIntroScrollController({ ...harness, settle: false });
+  harness.windowRef.flushRaf(0);
+
+  harness.setSequenceTop(-1000);
+  harness.listeners.get('scroll')();
+  harness.windowRef.flushRaf(16);
+  const firstScale = Number(harness.host.style.values['--orbit-page-scale']);
+  assert.ok(firstScale < 1 && firstScale > 0.65);
+
+  for (let timestamp = 32; timestamp <= 800; timestamp += 16) {
+    harness.windowRef.flushRaf(timestamp);
+  }
+  assert.equal(harness.host.style.values['--orbit-page-scale'], '0.65');
+  controller.destroy();
+});
+
+test('controller damping accounts for frame gaps longer than 64ms', () => {
+  const harness = createControllerHarness();
+  const controller = createIntroScrollController({ ...harness, settle: false });
+  harness.windowRef.flushRaf(0);
+  harness.setSequenceTop(-1000);
+  harness.listeners.get('scroll')();
+  harness.windowRef.flushRaf(16);
+
+  const firstProgress = (1 - Number(harness.host.style.values['--orbit-page-scale'])) / 0.35;
+  harness.windowRef.flushRaf(116);
+  const expectedProgress = advanceDampedProgress(firstProgress, 1, 100, 72);
+  const expectedScale = 1 - 0.35 * expectedProgress;
+
+  assert.ok(Math.abs(Number(harness.host.style.values['--orbit-page-scale']) - expectedScale) < 1e-12);
+  controller.destroy();
+});
+
 test('controller applies reduced-motion translation directly and staggers cards reversibly', () => {
   const harness = createControllerHarness({ reduced: true });
   const cards = [0, 1, 2].map(() => ({ style: { values: {}, setProperty(name, value) { this.values[name] = value; } } }));
@@ -92,43 +153,87 @@ test('controller applies reduced-motion translation directly and staggers cards 
 test('midpoint settle follows the most recent scroll direction', () => {
   const down = createControllerHarness();
   const downController = createIntroScrollController(down);
-  down.windowRef.flushRaf();
+  down.windowRef.flushRaf(0);
   down.setSequenceTop(-500);
   down.listeners.get('scroll')();
-  down.windowRef.flushRaf();
+  down.windowRef.flushRaf(16);
   down.windowRef.runTimer();
-  assert.deepEqual(down.scrollCalls.at(-1), { top: 1000, behavior: 'smooth' });
+  assert.equal(down.scrollCalls.length, 0);
+  down.windowRef.flushRaf(32);
+  down.windowRef.flushRaf(320);
+  assert.deepEqual(down.scrollCalls.at(-1), { top: 1000, behavior: 'auto' });
+  assert.equal(down.host.style.values['--orbit-page-scale'], '0.65');
   downController.destroy();
 
   const up = createControllerHarness();
   up.setSequenceTop(-700);
   const upController = createIntroScrollController(up);
-  up.windowRef.flushRaf();
+  up.windowRef.flushRaf(0);
   up.setSequenceTop(-500);
   up.listeners.get('scroll')();
-  up.windowRef.flushRaf();
+  up.windowRef.flushRaf(16);
   up.windowRef.runTimer();
-  assert.deepEqual(up.scrollCalls.at(-1), { top: 0, behavior: 'smooth' });
+  up.windowRef.flushRaf(32);
+  up.windowRef.flushRaf(320);
+  assert.deepEqual(up.scrollCalls.at(-1), { top: 0, behavior: 'auto' });
   upController.destroy();
 });
 
-test('programmatic settle scrolls continue until new user input cancels them', () => {
+test('frame-owned settle stops immediately on new user input', () => {
   const harness = createControllerHarness();
   const controller = createIntroScrollController(harness);
-  harness.windowRef.flushRaf();
+  harness.windowRef.flushRaf(0);
   harness.setSequenceTop(-600);
   harness.listeners.get('scroll')();
-  harness.windowRef.flushRaf();
+  harness.windowRef.flushRaf(16);
   harness.windowRef.runTimer();
-  assert.deepEqual(harness.scrollCalls, [{ top: 1000, behavior: 'smooth' }]);
+  harness.windowRef.flushRaf(32);
+  harness.windowRef.flushRaf(112);
+  assert.ok(harness.scrollCalls.length > 0);
+  assert.ok(harness.scrollCalls.every((call) => call.behavior === 'auto'));
 
-  harness.setSequenceTop(-650);
-  harness.listeners.get('scroll')();
-  harness.windowRef.flushRaf();
-  assert.deepEqual(harness.scrollCalls, [{ top: 1000, behavior: 'smooth' }]);
-
+  const callsBeforeCancel = harness.scrollCalls.length;
   harness.listeners.get('wheel')();
-  assert.deepEqual(harness.scrollCalls.at(-1), { top: 650, behavior: 'auto' });
+  harness.windowRef.flushRaf(320);
+  assert.equal(harness.scrollCalls.length, callsBeforeCancel);
   controller.destroy();
   assert.equal(harness.listeners.size, 0);
+});
+
+test('unexpected manual scroll cancels an active settle without fighting it', () => {
+  const harness = createControllerHarness();
+  const controller = createIntroScrollController(harness);
+  harness.windowRef.flushRaf(0);
+  harness.setSequenceTop(-600);
+  harness.listeners.get('scroll')();
+  harness.windowRef.flushRaf(16);
+  harness.windowRef.runTimer();
+  harness.windowRef.flushRaf(32);
+
+  const callsBeforeDrag = harness.scrollCalls.length;
+  harness.setSequenceTop(-450);
+  harness.listeners.get('scroll')();
+  harness.windowRef.flushRaf(112);
+
+  assert.equal(harness.scrollCalls.length, callsBeforeDrag);
+  controller.destroy();
+});
+
+test('enabling reduced motion cancels an active settle and applies progress directly', () => {
+  const harness = createControllerHarness();
+  const controller = createIntroScrollController(harness);
+  harness.windowRef.flushRaf(0);
+  harness.setSequenceTop(-600);
+  harness.listeners.get('scroll')();
+  harness.windowRef.flushRaf(16);
+  harness.windowRef.runTimer();
+  harness.windowRef.flushRaf(32);
+
+  const callsBeforePreferenceChange = harness.scrollCalls.length;
+  harness.media.setMatches(true);
+  harness.windowRef.flushRaf(112);
+
+  assert.equal(harness.scrollCalls.length, callsBeforePreferenceChange);
+  assert.equal(harness.host.style.values['--orbit-page-scale'], '0.79');
+  controller.destroy();
 });

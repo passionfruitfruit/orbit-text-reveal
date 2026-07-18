@@ -38,12 +38,14 @@ orbit-text-reveal {
   height: min(var(--orbit-stage-height), 100dvh);
   font-size: var(--orbit-font-size);
   overflow: clip;
-  transform: translate(
+  transform: translate3d(
       calc(-50% + var(--orbit-page-x)),
-      calc(-50% + var(--orbit-page-y))
+      calc(-50% + var(--orbit-page-y)),
+      0
     )
     scale(var(--orbit-page-scale));
   transform-origin: center;
+  will-change: transform;
 }
 
 orbit-text-reveal[hidden] {
@@ -58,7 +60,8 @@ orbit-text-reveal[hidden] {
 .intro-scene {
   position: sticky;
   top: 0;
-  min-height: 100svh;
+  height: 100svh;
+  height: 100dvh;
   overflow: visible;
 }
 
@@ -104,7 +107,7 @@ orbit-text-reveal[hidden] {
   gap: 18px;
   min-height: 132px;
   padding: 22px 24px;
-  border-radius: 8px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.75);
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-sizing: border-box;

@@ -2,6 +2,19 @@ export function clampProgress(value) {
   return Math.min(1, Math.max(0, value));
 }
 
+const DAMPING_EPSILON = 0.0001;
+
+export function advanceDampedProgress(current, target, deltaMs, responseMs = 72) {
+  const from = clampProgress(current);
+  const to = clampProgress(target);
+  if (Math.abs(to - from) <= DAMPING_EPSILON) return to;
+  if (!Number.isFinite(deltaMs) || deltaMs <= 0) return from;
+  const response = Math.max(1, Number.isFinite(responseMs) ? responseMs : 72);
+  const alpha = 1 - Math.exp(-deltaMs / response);
+  const next = from + (to - from) * alpha;
+  return Math.abs(to - next) <= DAMPING_EPSILON ? to : next;
+}
+
 export function computeIntroFrame(progress, viewport, { reducedMotion = false } = {}) {
   const p = clampProgress(progress);
   const { width, height } = viewport;
@@ -72,8 +85,17 @@ export function createIntroScrollController({
   let pendingRaf = null;
   let isDestroyed = false;
   let lastInteractive = null;
-  let activeSettle = false;
-  let lastScrollTop = Math.max(0, -sequence.getBoundingClientRect().top);
+  let activeSettle = null;
+  let lastFrameTime = null;
+  const getTravel = () => Math.max(0, sequence.scrollHeight - windowRef.innerHeight);
+  const getScrollTop = () => Math.max(0, -sequence.getBoundingClientRect().top);
+  const getProgress = () => {
+    const travel = getTravel();
+    return travel > 0 ? clampProgress(getScrollTop() / travel) : 0;
+  };
+  let lastScrollTop = getScrollTop();
+  let targetProgress = getProgress();
+  let displayedProgress = targetProgress;
   let lastScrollDirection = 0;
   const cardElements = asCards(platforms, cards);
   const media = typeof windowRef.matchMedia === 'function'
@@ -81,16 +103,15 @@ export function createIntroScrollController({
     : null;
 
   const reducedMotion = () => Boolean(media?.matches);
-  const getTravel = () => Math.max(0, sequence.scrollHeight - windowRef.innerHeight);
   const cancelPendingSettle = () => {
     if (settleTimer !== null) windowRef.clearTimeout?.(settleTimer);
     settleTimer = null;
   };
   const cancelActiveSettle = () => {
     if (!activeSettle) return;
-    activeSettle = false;
-    const top = Math.max(0, -sequence.getBoundingClientRect().top);
-    windowRef.scrollTo?.({ top, behavior: 'auto' });
+    activeSettle = null;
+    lastFrameTime = null;
+    targetProgress = getProgress();
   };
 
   function applyFrame(frame) {
@@ -115,36 +136,91 @@ export function createIntroScrollController({
     }
   }
 
-  function readFrame() {
-    if (isDestroyed) return;
+  function sampleScrollTarget() {
     const travel = getTravel();
-    const scrollTop = Math.max(0, -sequence.getBoundingClientRect().top);
+    const scrollTop = getScrollTop();
     const delta = scrollTop - lastScrollTop;
     if (delta !== 0) lastScrollDirection = delta > 0 ? 1 : -1;
     lastScrollTop = scrollTop;
-    const rawProgress = travel > 0 ? scrollTop / travel : 0;
-    const frame = computeIntroFrame(rawProgress, {
+    targetProgress = travel > 0 ? clampProgress(scrollTop / travel) : 0;
+  }
+
+  function runActiveSettle(timestamp) {
+    if (!activeSettle) return false;
+    if (activeSettle.startedAt === null) activeSettle.startedAt = timestamp;
+    const elapsed = Math.max(0, timestamp - activeSettle.startedAt);
+    const t = clampProgress(elapsed / activeSettle.durationMs);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const top = t >= 1
+      ? activeSettle.toTop
+      : activeSettle.fromTop + (activeSettle.toTop - activeSettle.fromTop) * eased;
+    windowRef.scrollTo?.({ top, behavior: 'auto' });
+    activeSettle.lastCommandedTop = top;
+    lastScrollTop = top;
+    const travel = getTravel();
+    targetProgress = travel > 0 ? clampProgress(top / travel) : 0;
+    displayedProgress = clampProgress(
+      activeSettle.fromDisplayedProgress
+        + (activeSettle.toProgress - activeSettle.fromDisplayedProgress) * eased
+    );
+    if (t >= 1) activeSettle = null;
+    return true;
+  }
+
+  function readFrame(timestamp = 0) {
+    if (isDestroyed) return;
+    const settlingThisFrame = runActiveSettle(timestamp);
+
+    if (settlingThisFrame) {
+      // The settle curve is already continuous and owns the visual progress.
+    } else if (reducedMotion()) {
+      displayedProgress = targetProgress;
+    } else {
+      const deltaMs = lastFrameTime === null
+        ? 16
+        : Math.max(0, timestamp - lastFrameTime);
+      displayedProgress = advanceDampedProgress(displayedProgress, targetProgress, deltaMs);
+    }
+    lastFrameTime = timestamp;
+
+    const frame = computeIntroFrame(displayedProgress, {
       width: windowRef.innerWidth,
       height: windowRef.innerHeight
     }, { reducedMotion: reducedMotion() });
     applyFrame(frame);
 
+    if (activeSettle || Math.abs(displayedProgress - targetProgress) > DAMPING_EPSILON) {
+      scheduleFrame();
+    } else {
+      displayedProgress = targetProgress;
+      lastFrameTime = null;
+    }
+  }
+
+  function armSettle() {
     cancelPendingSettle();
-    if (activeSettle && (frame.progress <= 0 || frame.progress >= 1)) activeSettle = false;
-    if (activeSettle) return;
-    if (!settle || reducedMotion() || frame.progress <= 0 || frame.progress >= 1) return;
+    if (!settle || reducedMotion() || activeSettle || targetProgress <= 0 || targetProgress >= 1) return;
     settleTimer = windowRef.setTimeout?.(() => {
       settleTimer = null;
       if (isDestroyed) return;
       const currentTravel = getTravel();
       if (currentTravel <= 0) return;
-      const currentProgress = clampProgress(-sequence.getBoundingClientRect().top / currentTravel);
+      const currentTop = getScrollTop();
+      const currentProgress = clampProgress(currentTop / currentTravel);
       if (currentProgress <= 0 || currentProgress >= 1) return;
-      const top = currentProgress < 0.5 || (currentProgress === 0.5 && lastScrollDirection <= 0)
+      const targetTop = currentProgress < 0.5 || (currentProgress === 0.5 && lastScrollDirection <= 0)
         ? 0
         : sequence.scrollHeight - windowRef.innerHeight;
-      activeSettle = true;
-      windowRef.scrollTo?.({ top, behavior: 'smooth' });
+      activeSettle = {
+        fromTop: currentTop,
+        toTop: targetTop,
+        lastCommandedTop: currentTop,
+        fromDisplayedProgress: displayedProgress,
+        toProgress: clampProgress(targetTop / currentTravel),
+        startedAt: null,
+        durationMs: 260
+      };
+      scheduleFrame();
     }, 140) ?? null;
   }
 
@@ -154,27 +230,45 @@ export function createIntroScrollController({
       readFrame();
       return;
     }
-    pendingRaf = windowRef.requestAnimationFrame(() => {
+    pendingRaf = windowRef.requestAnimationFrame((timestamp) => {
       pendingRaf = null;
-      readFrame();
+      readFrame(timestamp);
     });
   }
 
   function onScroll() {
     cancelPendingSettle();
+    if (activeSettle) {
+      const currentTop = getScrollTop();
+      if (Math.abs(currentTop - activeSettle.lastCommandedTop) > 1) {
+        cancelActiveSettle();
+      }
+    }
+    sampleScrollTarget();
     scheduleFrame();
+    if (!activeSettle) armSettle();
   }
   function onUserInput() {
     cancelPendingSettle();
     cancelActiveSettle();
   }
-  function onResize() { scheduleFrame(); }
+  function onResize() {
+    sampleScrollTarget();
+    scheduleFrame();
+  }
+  function onMotionPreferenceChange() {
+    cancelPendingSettle();
+    cancelActiveSettle();
+    sampleScrollTarget();
+    lastFrameTime = null;
+    scheduleFrame();
+  }
 
   windowRef.addEventListener?.('scroll', onScroll, { passive: true });
   windowRef.addEventListener?.('wheel', onUserInput, { passive: true });
   windowRef.addEventListener?.('touchstart', onUserInput, { passive: true });
   windowRef.addEventListener?.('resize', onResize, { passive: true });
-  media?.addEventListener?.('change', onResize);
+  media?.addEventListener?.('change', onMotionPreferenceChange);
   scheduleFrame();
 
   return {
@@ -184,14 +278,14 @@ export function createIntroScrollController({
       if (isDestroyed) return;
       isDestroyed = true;
       cancelPendingSettle();
-      activeSettle = false;
+      activeSettle = null;
       if (pendingRaf !== null) windowRef.cancelAnimationFrame?.(pendingRaf);
       pendingRaf = null;
       windowRef.removeEventListener?.('scroll', onScroll);
       windowRef.removeEventListener?.('wheel', onUserInput);
       windowRef.removeEventListener?.('touchstart', onUserInput);
       windowRef.removeEventListener?.('resize', onResize);
-      media?.removeEventListener?.('change', onResize);
+      media?.removeEventListener?.('change', onMotionPreferenceChange);
     }
   };
 }

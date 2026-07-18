@@ -72,11 +72,12 @@ test('production page declares semantic platform structure', async () => {
 
 test('production page uses the current main cache key and preserves Orbit cache key', async () => {
   const source = await productionSource();
-  assert.match(source, /base\.css\?v=20260718-4/);
-  assert.match(source, /main\.js\?v=20260718-3/);
-  assert.doesNotMatch(source, /main\.js\?v=20260718-2/);
+  assert.match(source, /base\.css\?v=20260718-9/);
+  assert.match(source, /main\.js\?v=20260718-4/);
+  assert.doesNotMatch(source, /main\.js\?v=20260718-3/);
   const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
   assert.match(main, /orbit-text-reveal\.js\?v=20260718-2/);
+  assert.match(main, /intro-scroll\.js\?v=20260718-4/);
 });
 
 test('production CSS keeps mobile cards reachable and uses fixed platform heading sizes', async () => {
@@ -85,8 +86,11 @@ test('production CSS keeps mobile cards reachable and uses fixed platform headin
   assert.doesNotMatch(css, /html,\s*\nbody\s*\{[^}]*overflow/s);
   assert.doesNotMatch(css, /body\s*\{[^}]*overflow-(?:x|y):/s);
   assert.match(css, /\.intro-scene\s*\{[^}]*overflow:\s*visible/s);
+  assert.match(css, /\.intro-scene\s*\{[^}]*height:\s*100svh;[^}]*height:\s*100dvh;/s);
   assert.match(css, /\.platforms__heading\s*\{[^}]*font-size:\s*26px/s);
   assert.match(css, /@media\s*\(max-width:\s*599px\)[\s\S]*?\.platforms__heading\s*\{[^}]*font-size:\s*22px/s);
   assert.match(css, /--platform-card-opacity/);
   assert.match(css, /--platform-card-y/);
+  assert.match(css, /\.platform-card\s*\{[^}]*border-radius:\s*18px/s);
+  assert.match(css, /orbit-text-reveal\s*\{[^}]*will-change:\s*transform/s);
 });

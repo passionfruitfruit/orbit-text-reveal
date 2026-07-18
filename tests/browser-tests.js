@@ -859,8 +859,10 @@ async function runProductionBoundaryCheck() {
   assertClose(mobilePlatforms.getBoundingClientRect().width, 288, 1, 'platform width is 288px at 320px');
   check(mobileWindow.getComputedStyle(mobileGrid).gridTemplateColumns.split(' ').length === 1, 'platform grid is one column at 320px');
   mobileWindow.scrollTo(0, mobileDocument.documentElement.scrollHeight);
-  await nextFrame();
-  await nextFrame();
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    await nextFrame();
+    if (mobileCards.at(-1).getBoundingClientRect().bottom <= mobileWindow.innerHeight + 1) break;
+  }
   check(mobileCards.at(-1).getBoundingClientRect().bottom <= mobileWindow.innerHeight + 1, 'last mobile platform card is reachable at 320x700');
   check(mobileDocument.documentElement.scrollWidth === mobileDocument.documentElement.clientWidth, 'mobile page has no horizontal overflow');
   mobileFrame.remove();
