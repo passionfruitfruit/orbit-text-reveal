@@ -48,7 +48,15 @@ test('browser runner names every final handoff invariant', async () => {
     'ten-character line preserves every grapheme at 320px',
     'component geometry uses the resolved 19px fluid font size',
     'ten characters fit 16px margin at 320px',
-    'font size 19px at 320px'
+    'font size 19px at 320px',
+    'live resize preserves the active index',
+    'live resize does not return the active animation to its initial hold',
+    'live resize exposes a temporary transform',
+    'live resize follows the smaller resolved font continuously',
+    'live resize maps the old geometry center to the latest stage center',
+    'live resize does not restart the active loop',
+    'safe resize reflow did not clear the temporary transform',
+    'safe resize reflow commits the latest center'
   ];
   const allEvidence = [...requiredEvidence, ...fluidEvidence];
 

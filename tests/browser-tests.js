@@ -653,6 +653,58 @@ async function runResizeObserverChecks() {
   check(geometryFitsBounds(shortProbe.debugSnapshot().geometry, 150, 96, 16), 'narrow short stage fits text block and ball endpoints on both axes');
   shortProbe.destroy();
   shortProbe.remove();
+
+  const liveProbe = document.createElement('orbit-text-reveal');
+  liveProbe.style.cssText = 'width:600px;height:300px';
+  liveProbe.style.setProperty('--orbit-font-size', '60px');
+  liveProbe.config = {
+    ...animationConfig([{ text: 'Live resize probe', holdMs: 20 }], {
+      centerHoldMs: 10, revealMs: 600, retractMs: 100, lineTravelMs: 40
+    }),
+    layout: { maxWidth: 600, fontSize: 60, ballSizeEm: 0.8, ballGapEm: 0.1, scale: 1 }
+  };
+  const liveStates = [];
+  liveProbe.addEventListener('orbit-state-change', (event) => liveStates.push(event.detail.state));
+  host.append(liveProbe);
+  await liveProbe.ready;
+
+  await waitFor(
+    () => liveProbe.debugSnapshot().state === 'reveal-line',
+    'live resize probe never reached reveal'
+  );
+
+  const before = liveProbe.debugSnapshot();
+  const beforeIndex = before.index;
+  const centerHoldCountBefore = liveStates.filter((state) => state === 'center-hold').length;
+  liveProbe.style.width = '420px';
+  liveProbe.style.setProperty('--orbit-font-size', '42px');
+  await nextFrame();
+  await nextFrame();
+
+  const during = liveProbe.debugSnapshot();
+  check(during.index === beforeIndex, 'live resize preserves the active index');
+  check(during.state !== 'center-hold', 'live resize does not return the active animation to its initial hold');
+  check(Boolean(during.liveResizeTransform), 'live resize exposes a temporary transform');
+  check(during.liveResizeTransform.scale < 1, 'live resize follows the smaller resolved font continuously');
+  assertClose(
+    before.center.x + during.liveResizeTransform.x,
+    liveProbe.clientWidth / 2,
+    1,
+    'live resize maps the old geometry center to the latest stage center'
+  );
+  check(
+    liveStates.filter((state) => state === 'center-hold').length === centerHoldCountBefore,
+    'live resize does not restart the active loop'
+  );
+
+  await waitFor(
+    () => liveProbe.debugSnapshot().liveResizeTransform.scale === 1,
+    'safe resize reflow did not clear the temporary transform'
+  );
+  check(liveProbe.debugSnapshot().center.x === liveProbe.clientWidth / 2, 'safe resize reflow commits the latest center');
+
+  liveProbe.destroy();
+  liveProbe.remove();
 }
 
 async function runReducedMotionCheck() {
@@ -723,7 +775,7 @@ async function runProductionBoundaryCheck() {
     frameWindow.innerWidth * 0.4,
     Math.min(
       frameWindow.innerWidth * 7 / 9,
-      frameWindow.innerWidth * 0.324444444 + 145.0666667
+      frameWindow.innerWidth * 0.269230769 + frameWindow.innerHeight * 0.232478632
     )
   );
   assertClose(hostRect.width, expectedWidth, 1, `stage width at ${frameWindow.innerWidth}px`);
