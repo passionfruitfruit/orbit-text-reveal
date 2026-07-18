@@ -48,8 +48,8 @@ test('local preview server binds explicitly to IPv4 loopback', async () => {
 
 test('base.css declares continuous fluid stage width and font size', async () => {
   const css = await readFile(new URL('../src/base.css', import.meta.url), 'utf8');
-  assert.match(css, /--orbit-stage-width:\s*max\(\s*40vw,\s*min\(77\.7777778vw,\s*calc\(32\.4444444vw \+ 145\.0666667px\)\)\s*\)/s);
-  assert.match(css, /--orbit-font-size:\s*clamp\(19px,\s*calc\(2\.8125vw \+ 10px\),\s*64px\)/s);
+  assert.match(css, /--orbit-stage-width:\s*clamp\(\s*40vw,\s*calc\(26\.9230769vw \+ 23\.2478632vh\),\s*77\.7777778vw\s*\)/s);
+  assert.match(css, /--orbit-font-size:\s*clamp\(19px,\s*calc\(2\.431891vw \+ 1\.6025641vh\),\s*64px\)/s);
   assert.match(css, /--orbit-page-background:\s*#f7f2ef/);
   assert.match(css, /--orbit-stage-height:\s*100svh;/);
   assert.match(css, /min-height:\s*100svh;\s*min-height:\s*100dvh;/s);
@@ -58,4 +58,6 @@ test('base.css declares continuous fluid stage width and font size', async () =>
     /height:\s*min\(var\(--orbit-stage-height\),\s*100svh\);\s*height:\s*min\(var\(--orbit-stage-height\),\s*100dvh\);/s
   );
   assert.doesNotMatch(css, /calc\(100vw - 2rem\)/);
+  assert.doesNotMatch(css, /32\.4444444vw \+ 145\.0666667px/);
+  assert.doesNotMatch(css, /2\.8125vw \+ 10px/);
 });

@@ -1,12 +1,9 @@
 :root {
   color-scheme: light;
   --orbit-page-background: #f7f2ef;
-  --orbit-stage-width: max(
-    40vw,
-    min(77.7777778vw, calc(32.4444444vw + 145.0666667px))
-  );
+  --orbit-stage-width: clamp(40vw, calc(26.9230769vw + 23.2478632vh), 77.7777778vw);
   --orbit-stage-height: 100svh;
-  --orbit-font-size: clamp(19px, calc(2.8125vw + 10px), 64px);
+  --orbit-font-size: clamp(19px, calc(2.431891vw + 1.6025641vh), 64px);
   --orbit-page-x: 0px;
   --orbit-page-y: 0px;
   --orbit-page-scale: 1;
