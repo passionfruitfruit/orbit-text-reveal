@@ -3,7 +3,7 @@ import { animationConfig } from './config.js?v=20260711-5';
 export async function startProductionPage({
   documentRef = globalThis.document,
   config = animationConfig,
-  loadComponent = () => import('./src/orbit-text-reveal.js?v=20260718-1')
+  loadComponent = () => import('./src/orbit-text-reveal.js?v=20260718-2')
 } = {}) {
   await documentRef.fonts.ready;
   await loadComponent();

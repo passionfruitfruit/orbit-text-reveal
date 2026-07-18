@@ -1,4 +1,4 @@
-import '../src/orbit-text-reveal.js?v=20260718-1';
+import '../src/orbit-text-reveal.js?v=20260718-2';
 
 const results = document.querySelector('#results');
 const host = document.querySelector('#host');

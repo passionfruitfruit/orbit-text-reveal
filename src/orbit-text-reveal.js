@@ -63,6 +63,8 @@ export class OrbitTextReveal extends HTMLElement {
   #autoFitScale = 1;
   #resolvedScale = 1;
   #resolvedFontSize = 0;
+  #renderedSize = null;
+  #liveResizeTransform = { x: 0, y: 0, scale: 1 };
 
   constructor() {
     super();
@@ -117,6 +119,8 @@ export class OrbitTextReveal extends HTMLElement {
     this.#ignoreInitialResize = true;
     this.#layoutStarted = false;
     this.#cancelRun();
+    this.#renderedSize = null;
+    this.#liveResizeTransform = { x: 0, y: 0, scale: 1 };
   }
 
   set config(value) {
@@ -184,6 +188,8 @@ export class OrbitTextReveal extends HTMLElement {
     this.#lastObservedSize = null;
     this.#layoutStarted = false;
     this.#lineViews = [];
+    this.#renderedSize = null;
+    this.#liveResizeTransform = { x: 0, y: 0, scale: 1 };
     this.shadowRoot.querySelector('.lines').replaceChildren();
     this.shadowRoot.querySelector('.ball').hidden = true;
     this.shadowRoot.querySelector('.sr-text').textContent = '';
@@ -204,7 +210,8 @@ export class OrbitTextReveal extends HTMLElement {
         centerY: view.renderCenterY
       })),
       autoFitScale: this.#autoFitScale,
-      resolvedScale: this.#resolvedScale
+      resolvedScale: this.#resolvedScale,
+      liveResizeTransform: this.#liveResizeTransform
     });
   }
 
@@ -291,12 +298,16 @@ export class OrbitTextReveal extends HTMLElement {
     const changed = Math.abs(size.width - previous.width) > 0.01
       || Math.abs(size.height - previous.height) > 0.01;
     if (changed) {
-      if (this.#loopPromise && this.#geometry) this.#pendingReflow = true;
+      if (this.#loopPromise && this.#geometry) {
+        this.#applyLiveResizeTransform(size);
+        this.#pendingReflow = true;
+      }
       else this.restart();
     }
   }
 
   #render() {
+    this.#clearLiveResizeTransform();
     const item = this.#config.texts[this.#index];
     const linesLayer = this.shadowRoot.querySelector('.lines');
     const stage = this.shadowRoot.querySelector('.stage');
@@ -350,6 +361,7 @@ export class OrbitTextReveal extends HTMLElement {
     const fontSize = layout.fontSize * layout.scale;
     const width = this.clientWidth || window.innerWidth || layout.maxWidth;
     const height = this.clientHeight || window.innerHeight || fontSize * 3;
+    this.#renderedSize = { width, height };
 
     if (!item) {
       const ballSize = fontSize * layout.ballSizeEm;
@@ -768,6 +780,49 @@ export class OrbitTextReveal extends HTMLElement {
     this.#activeDelays.clear();
     this.#paused = this.#userPaused || this.#visibilityPaused;
     this.#loopPromise = null;
+  }
+
+  #clearLiveResizeTransform() {
+    const visual = this.shadowRoot && this.shadowRoot.querySelector('.visual');
+    if (!visual) return;
+    visual.style.transform = '';
+    visual.style.transformOrigin = '';
+    this.#liveResizeTransform = { x: 0, y: 0, scale: 1 };
+  }
+
+  #readExternalFontSize(layout) {
+    const style = getComputedStyle(this);
+    const raw = style.getPropertyValue('--orbit-font-size').trim();
+    if (!raw) return null;
+    return cssLength(
+      raw,
+      layout.fontSize,
+      cssLength(style.fontSize, layout.fontSize, layout.fontSize)
+    );
+  }
+
+  #applyLiveResizeTransform(size) {
+    if (!this.#geometry || !this.#renderedSize || this.#resolvedFontSize <= 0) return;
+    const item = this.#config.texts[this.#index];
+    const layout = { ...this.#config.layout, ...item?.layout };
+    const externalFontSize = this.#readExternalFontSize(layout);
+    const targetFontSize = externalFontSize == null
+      ? this.#resolvedFontSize
+      : externalFontSize * layout.scale * this.#autoFitScale;
+    const scale = Math.max(Number.EPSILON, targetFontSize / this.#resolvedFontSize);
+    const targetCenter = {
+      x: positionFrom(layout.x, size.width),
+      y: positionFrom(layout.y, size.height)
+    };
+    const transform = {
+      x: targetCenter.x - this.#geometry.center.x,
+      y: targetCenter.y - this.#geometry.center.y,
+      scale
+    };
+    const visual = this.shadowRoot.querySelector('.visual');
+    visual.style.transformOrigin = `${this.#geometry.center.x}px ${this.#geometry.center.y}px`;
+    visual.style.transform = `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.scale})`;
+    this.#liveResizeTransform = transform;
   }
 }
 
