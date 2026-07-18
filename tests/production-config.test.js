@@ -5,7 +5,7 @@ import test from 'node:test';
 const workspaceFile = (path) => new URL(`../${path}`, import.meta.url);
 const sourceOf = (path) => readFile(workspaceFile(path), 'utf8').catch(() => '');
 
- test('production config contains the exact six-text sequence and approved colors', async () => {
+test('production config contains the exact six-text sequence and approved colors', async () => {
   const configUrl = workspaceFile('config.js');
   const exists = await access(configUrl).then(() => true, () => false);
   assert.equal(exists, true, 'config.js must exist');
@@ -19,7 +19,7 @@ const sourceOf = (path) => readFile(workspaceFile(path), 'utf8').catch(() => '')
     '你来这里干嘛\\（≧▽≦）/',
     '（别光看屏幕啦！'
   ];
- 
+
   assert.deepEqual(animationConfig.texts.map(({ text }) => text), expectedTexts);
   assert.deepEqual(
     animationConfig.texts.map(({ text }) => (text.match(/\n/g) ?? []).length),
@@ -29,6 +29,10 @@ const sourceOf = (path) => readFile(workspaceFile(path), 'utf8').catch(() => '')
   assert.equal(animationConfig.style.background, '#f7f2ef');
   assert.equal(animationConfig.style.textColor, '#000000');
   assert.equal(animationConfig.style.ballColor, '#000000');
+  assert.equal(animationConfig.motion.easing, 'cubic-bezier(0.333333, 0, 0.666667, 0.5)');
+  assert.equal(animationConfig.motion.continuationEasing, 'linear');
+  assert.equal(animationConfig.motion.exitEasing, 'cubic-bezier(0.333333, 0.5, 0.666667, 1)');
+  assert.equal(animationConfig.motion.singleLineEasing, 'cubic-bezier(0.333333, 0, 0.666667, 1)');
 });
 
 test('stage fitting contains a long first manual line followed by a short last line', async () => {
