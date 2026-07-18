@@ -5,22 +5,30 @@ import test from 'node:test';
 const workspaceFile = (path) => new URL(`../${path}`, import.meta.url);
 const sourceOf = (path) => readFile(workspaceFile(path), 'utf8').catch(() => '');
 
-test('central config exports single-line, manual-wrap, and automatic-wrap examples', async () => {
+ test('production config contains the exact six-text sequence and approved colors', async () => {
   const configUrl = workspaceFile('config.js');
   const exists = await access(configUrl).then(() => true, () => false);
   assert.equal(exists, true, 'config.js must exist');
 
   const { animationConfig } = await import(configUrl.href);
-  assert.equal(animationConfig.texts.length, 3);
-  assert.equal(animationConfig.texts[0].text.includes('\n'), false);
-  assert.equal(animationConfig.texts[1].text.includes('\n'), true);
-  assert.equal(animationConfig.texts[2].text.includes('\n'), false);
-  assert.ok(animationConfig.texts[2].text.length > animationConfig.texts[0].text.length);
+  const expectedTexts = [
+    'hello:)',
+    '欢迎！',
+    '粉骨碎身浑不怕\n要留清白在人间',
+    '真的英雄：不是打败世界的傲慢，而是勇敢的守住内心的天真',
+    '你来这里干嘛\\（≧▽≦）/',
+    '（别光看屏幕啦！'
+  ];
+ 
+  assert.deepEqual(animationConfig.texts.map(({ text }) => text), expectedTexts);
+  assert.deepEqual(
+    animationConfig.texts.map(({ text }) => (text.match(/\n/g) ?? []).length),
+    [0, 0, 1, 0, 0, 0]
+  );
   assert.ok(animationConfig.texts.every(({ holdMs }) => Number.isFinite(holdMs)));
-  assert.equal(animationConfig.motion.easing, 'cubic-bezier(0.333333, 0, 0.666667, 0.5)');
-  assert.equal(animationConfig.motion.continuationEasing, 'linear');
-  assert.equal(animationConfig.motion.exitEasing, 'cubic-bezier(0.333333, 0.5, 0.666667, 1)');
-  assert.equal(animationConfig.motion.singleLineEasing, 'cubic-bezier(0.333333, 0, 0.666667, 1)');
+  assert.equal(animationConfig.style.background, '#f7f2ef');
+  assert.equal(animationConfig.style.textColor, '#000000');
+  assert.equal(animationConfig.style.ballColor, '#000000');
 });
 
 test('stage fitting contains a long first manual line followed by a short last line', async () => {

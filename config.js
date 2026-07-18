@@ -4,19 +4,28 @@ export const animationConfig = normalizeConfig({
   // texts：按数组顺序循环；text 中写 \n 可指定手动换行。
   texts: [
     {
-      text: '让想法自然展开',
-      // holdMs：这段文字完全展开后停留多久，单位为毫秒。
+      text: 'hello:)',
       holdMs: 1800
     },
     {
-      text: '光从这里出发\n再轻轻回到圆心',
-      // holdMs：每段文字都可以设置不同的停留时长。
+      text: '欢迎！',
+      holdMs: 1800
+    },
+    {
+      text: '粉骨碎身浑不怕\n要留清白在人间',
       holdMs: 2200
     },
     {
-      text: '当一句话足够长时，它会在设定的最大宽度内自动换行，并保持自己的阅读节奏。',
-      // holdMs：自动换行不会影响其他条目的停留时间或行数。
+      text: '真的英雄：不是打败世界的傲慢，而是勇敢的守住内心的天真',
       holdMs: 2600
+    },
+    {
+      text: '你来这里干嘛\\（≧▽≦）/',
+      holdMs: 2000
+    },
+    {
+      text: '（别光看屏幕啦！',
+      holdMs: 1800
     }
   ],
   timing: {
@@ -43,9 +52,9 @@ export const animationConfig = normalizeConfig({
     autoWrap: true
   },
   style: {
-    textColor: '#111111',
-    ballColor: '#111111',
-    background: '#ecebe8',
+    textColor: '#000000',
+    ballColor: '#000000',
+    background: '#f7f2ef',
     fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
     fontWeight: 700
   },
