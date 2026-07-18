@@ -1,4 +1,5 @@
 import { normalizeConfig } from './src/config.js?v=20260711-5';
+import { normalizePlatformConfig } from './src/platform-config.js?v=20260718-3';
 
 export const animationConfig = normalizeConfig({
   // texts：按数组顺序循环；text 中写 \n 可指定手动换行。
@@ -73,3 +74,22 @@ export const animationConfig = normalizeConfig({
     reducedMotionRotate: false
   }
 });
+
+
+export const platformConfig = normalizePlatformConfig([
+  {
+    id: 'bilibili', title: 'bilibili', description: '视频、动态与我的公开投稿',
+    icon: './assets/platforms/bilibili.svg', iconSide: 'left',
+    action: { type: 'link', value: 'https://space.bilibili.com/496633495?', newTab: true }
+  },
+  {
+    id: 'qq', title: 'QQ', description: '我的 QQ 空间与公开动态',
+    icon: './assets/platforms/tencentqq.svg', iconSide: 'right',
+    action: { type: 'link', value: 'https://user.qzone.qq.com/2533194273', newTab: true }
+  },
+  {
+    id: 'email', title: '邮箱', description: '复制邮箱地址，与我取得联系',
+    icon: './assets/platforms/mail.svg', iconSide: 'left',
+    action: { type: 'copy', value: 'mail@zhang.jx.cn', newTab: false }
+  }
+]);

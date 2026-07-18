@@ -4,10 +4,20 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Orbit Text Reveal</title>
-    <link rel="stylesheet" href="./src/base.css">
+    <link rel="stylesheet" href="./src/base.css?v=20260718-4">
   </head>
   <body>
-    <orbit-text-reveal hidden></orbit-text-reveal>
-    <script type="module" src="./main.js?v=20260718-2"></script>
+    <main class="homepage">
+      <section class="intro-sequence" aria-labelledby="platform-heading">
+        <div class="intro-scene">
+          <orbit-text-reveal hidden></orbit-text-reveal>
+          <section class="platforms" aria-labelledby="platform-heading">
+            <h1 id="platform-heading" class="platforms__heading">找到我</h1>
+            <div id="platform-grid" class="platform-grid"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./main.js?v=20260718-3"></script>
   </body>
 </html>

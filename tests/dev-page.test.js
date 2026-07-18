@@ -51,3 +51,24 @@ test('developer preview controls have a responsive wrapping layout', async () =>
   const css = await readFile(new URL('../src/dev.css', import.meta.url), 'utf8');
   assert.match(css, /\.preview-controls\s*\{[^}]*display\s*:\s*flex[^}]*flex-wrap\s*:\s*wrap/s);
 });
+
+
+test('developer page has platform editor root element', async () => {
+  const html = await readFile(new URL('../dev.html', import.meta.url), 'utf8');
+  assert.match(html, /data-platform-editor-root/);
+});
+
+test('developer page script cache key uses current version', async () => {
+  const html = await readFile(new URL('../dev.html', import.meta.url), 'utf8');
+  assert.match(html, /dev-app\.js\?v=20260718-3/);
+  assert.doesNotMatch(html, /dev-app\.js\?v=20260718-2/);
+});
+
+test('developer CSS defines platform editor preview styles', async () => {
+  const css = await readFile(new URL('../src/dev.css', import.meta.url), 'utf8');
+  assert.match(css, /\.platform-editor-list\s*\{/);
+  assert.match(css, /\.platform-preview-grid\s*\{/);
+  assert.match(css, /\.platform-preview-grid\s+\.platform-card__action\s*\{/);
+  assert.match(css, /\.platform-preview-grid\s+\.platform-card\s*\{/);
+  assert.match(css, /\.platform-preview-grid\s+\.platform-card__icon\s*\{/);
+});

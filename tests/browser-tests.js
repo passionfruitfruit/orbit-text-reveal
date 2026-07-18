@@ -764,6 +764,7 @@ async function runProductionBoundaryCheck() {
 
   const frameWindow = frame.contentWindow;
   const frameDocument = frame.contentDocument;
+  const layoutViewportWidth = frameDocument.documentElement.clientWidth;
   const probe = frameDocument.querySelector('orbit-text-reveal');
   check(Boolean(probe), 'production frame exposes the real component host');
   await probe.ready;
@@ -779,11 +780,28 @@ async function runProductionBoundaryCheck() {
     )
   );
   assertClose(hostRect.width, expectedWidth, 1, `stage width at ${frameWindow.innerWidth}px`);
-  assertClose(hostRect.left + hostRect.width / 2, frameWindow.innerWidth / 2, 1, 'horizontal center');
+  assertClose(hostRect.left + hostRect.width / 2, layoutViewportWidth / 2, 1, 'horizontal center');
   assertClose(hostRect.top + hostRect.height / 2, frameWindow.innerHeight / 2, 1, 'vertical center');
-  check(frameDocument.documentElement.scrollWidth === frameWindow.innerWidth, 'no horizontal overflow');
+  check(frameDocument.documentElement.scrollWidth === layoutViewportWidth, 'no horizontal overflow');
 
-  if (frameWindow.innerWidth === 320) {
+  const sequence = frameDocument.querySelector('.intro-sequence');
+  const scene = frameDocument.querySelector('.intro-scene');
+  const travel = sequence.scrollHeight - frameWindow.innerHeight;
+  let scrollIndexEvents = 0;
+  const onScrollIndexChange = () => { scrollIndexEvents += 1; };
+  probe.addEventListener('orbit-index-change', onScrollIndexChange);
+  frameWindow.scrollTo(0, travel * 0.5);
+  await nextFrame();
+  await nextFrame();
+  const stickyRect = scene.getBoundingClientRect();
+  const scrolledHostRect = probe.getBoundingClientRect();
+  assertClose(stickyRect.top, 0, 1, 'intro scene stays sticky during the scroll-linked transition');
+  assertClose(scrolledHostRect.left + scrolledHostRect.width / 2, layoutViewportWidth / 2, 1, 'horizontal center while intro scrolls');
+  check(scrollIndexEvents === 0, 'intro scroll does not restart or change the Orbit index');
+  probe.removeEventListener('orbit-index-change', onScrollIndexChange);
+  frameWindow.scrollTo(0, 0);
+
+  if (layoutViewportWidth === 320) {
     const fontStyle = frameWindow.getComputedStyle(probe).fontSize;
     assertClose(parseFloat(fontStyle), 19, 0.1, `font size 19px at 320px: ${fontStyle}`);
 
@@ -817,6 +835,35 @@ async function runProductionBoundaryCheck() {
   }
 
   frame.remove();
+
+  const mobileFrame = document.createElement('iframe');
+  mobileFrame.style.cssText = 'position:fixed;left:-10000px;top:0;width:320px;height:700px;border:0';
+  mobileFrame.src = `/index.html?browser-mobile-test=${Date.now()}`;
+  document.body.append(mobileFrame);
+  await new Promise((resolve, reject) => {
+    mobileFrame.addEventListener('load', resolve, { once: true });
+    mobileFrame.addEventListener('error', () => reject(new Error('mobile production iframe failed to load')), { once: true });
+  });
+  const mobileWindow = mobileFrame.contentWindow;
+  const mobileDocument = mobileFrame.contentDocument;
+  const mobileProbe = mobileDocument.querySelector('orbit-text-reveal');
+  await mobileProbe.ready;
+  let mobileCards = [];
+  for (let attempt = 0; attempt < 10 && mobileCards.length < 3; attempt += 1) {
+    await nextFrame();
+    mobileCards = [...mobileDocument.querySelectorAll('.platform-card__action')];
+  }
+  const mobilePlatforms = mobileDocument.querySelector('.platforms');
+  const mobileGrid = mobileDocument.querySelector('.platform-grid');
+  check(mobileCards.length === 3, 'all three mobile platform cards render');
+  assertClose(mobilePlatforms.getBoundingClientRect().width, 288, 1, 'platform width is 288px at 320px');
+  check(mobileWindow.getComputedStyle(mobileGrid).gridTemplateColumns.split(' ').length === 1, 'platform grid is one column at 320px');
+  mobileWindow.scrollTo(0, mobileDocument.documentElement.scrollHeight);
+  await nextFrame();
+  await nextFrame();
+  check(mobileCards.at(-1).getBoundingClientRect().bottom <= mobileWindow.innerHeight + 1, 'last mobile platform card is reachable at 320x700');
+  check(mobileDocument.documentElement.scrollWidth === mobileDocument.documentElement.clientWidth, 'mobile page has no horizontal overflow');
+  mobileFrame.remove();
 }
 
 async function runDeveloperPageCheck() {

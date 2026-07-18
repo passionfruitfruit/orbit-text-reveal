@@ -1,5 +1,6 @@
-import { animationConfig } from '../config.js?v=20260711-5';
+import { animationConfig, platformConfig } from '../config.js?v=20260718-3';
 import { DEFAULT_CONFIG, normalizeConfig } from './config.js?v=20260711-5';
+import { startPlatformDeveloperEditor } from './platform-dev-app.js?v=20260718-3';
 
 export function cloneDraft(value) {
   return typeof structuredClone === 'function'
@@ -284,4 +285,12 @@ export function startDeveloperPage(documentRef = document, environment = {}) {
 if (typeof document !== 'undefined') {
   await import('./orbit-text-reveal.js?v=20260718-2');
   startDeveloperPage(document, globalThis.__ORBIT_DEV_TEST_ENV__);
+  const platformRoot = document.querySelector('[data-platform-editor-root]');
+  if (platformRoot) {
+    startPlatformDeveloperEditor({
+      documentRef: document,
+      container: platformRoot,
+      platformData: platformConfig
+    });
+  }
 }

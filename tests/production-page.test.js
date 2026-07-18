@@ -10,7 +10,6 @@ test('production page contains the component host', async () => {
   const source = await productionSource();
   assert.match(source, /<orbit-text-reveal\b/);
 });
-
 for (const forbidden of ['dev-app', 'textarea', 'Export configuration', '导出配置']) {
   test(`production page excludes ${forbidden}`, async () => {
     const source = await productionSource();
@@ -60,4 +59,34 @@ test('base.css declares continuous fluid stage width and font size', async () =>
   assert.doesNotMatch(css, /calc\(100vw - 2rem\)/);
   assert.doesNotMatch(css, /32\.4444444vw \+ 145\.0666667px/);
   assert.doesNotMatch(css, /2\.8125vw \+ 10px/);
+});
+test('production page declares semantic platform structure', async () => {
+   const source = await productionSource();
+   assert.match(source, /<main\b/);
+   assert.match(source, /<section\b[^>]*class="intro-sequence"/);
+   assert.match(source, /class="intro-scene"/);
+   assert.match(source, /id="platform-grid"/);
+   assert.match(source, /id="platform-heading"/);
+   assert.match(source, /<h1\b[^>]*id="platform-heading"/);
+});
+
+test('production page uses the current main cache key and preserves Orbit cache key', async () => {
+  const source = await productionSource();
+  assert.match(source, /base\.css\?v=20260718-4/);
+  assert.match(source, /main\.js\?v=20260718-3/);
+  assert.doesNotMatch(source, /main\.js\?v=20260718-2/);
+  const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
+  assert.match(main, /orbit-text-reveal\.js\?v=20260718-2/);
+});
+
+test('production CSS keeps mobile cards reachable and uses fixed platform heading sizes', async () => {
+  const css = await readFile(new URL('../src/base.css', import.meta.url), 'utf8');
+  assert.match(css, /html\s*\{[^}]*overflow-x:\s*clip;[^}]*overflow-y:\s*auto;/s);
+  assert.doesNotMatch(css, /html,\s*\nbody\s*\{[^}]*overflow/s);
+  assert.doesNotMatch(css, /body\s*\{[^}]*overflow-(?:x|y):/s);
+  assert.match(css, /\.intro-scene\s*\{[^}]*overflow:\s*visible/s);
+  assert.match(css, /\.platforms__heading\s*\{[^}]*font-size:\s*26px/s);
+  assert.match(css, /@media\s*\(max-width:\s*599px\)[\s\S]*?\.platforms__heading\s*\{[^}]*font-size:\s*22px/s);
+  assert.match(css, /--platform-card-opacity/);
+  assert.match(css, /--platform-card-y/);
 });

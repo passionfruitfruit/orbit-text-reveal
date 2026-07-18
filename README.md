@@ -187,6 +187,8 @@ orbit-text-reveal {
 4. 点击“复制配置”或“下载配置”。
 5. 将导出的 JSON 对象内容放入 `config.js` 的 `normalizeConfig({ ... })` 中。
 
+开发者页的“平台入口”编辑器独立管理 `platformConfig`：可编辑名称、简介、图标路径、图标左右位置、链接或复制动作及新标签页选项，并支持实时预览、排序、复制和下载 `platform-config.json`。平台配置不会混入 Orbit 的动画配置或 `normalizeConfig()`。
+
 正式页不会加载 `dev-app.js`，也不会显示任何编辑控件。
 
 页面切到后台时组件会自动暂停，返回前台时从原位置继续；若此前已由用户调用 `pause()`，切回前台不会擅自恢复。

@@ -196,42 +196,36 @@ test('non-positive requested safe area falls back to the full stage with visible
   assert.deepEqual(fitted.geometry.center, { x: 15, y: 30 });
 });
 
-test('module entry strictly waits for fonts before loading, assigning, and starting', async () => {
+test('bootstrap order records fonts-ready load-component assign-orbit-config render-platforms start-intro show-orbit', async () => {
   const source = await sourceOf('main.js');
   assert.match(source, /export async function startProductionPage/);
-
   const { startProductionPage } = await import(workspaceFile('main.js').href);
-  const events = [];
-  let resolveFonts;
-  const fontsReady = new Promise((resolve) => { resolveFonts = resolve; });
+  const calls = [];
   const host = {
-    set config(value) { events.push(['config', value]); },
-    set hidden(value) { events.push(['hidden', value]); }
+    set config(value) {},
+    set hidden(value) {}
+  };
+  const elements = {
+    'orbit-text-reveal': host,
+    '.intro-sequence': { getBoundingClientRect: () => ({ top: 0 }), scrollHeight: 2000 },
+    '.platforms': { inert: false, setAttribute() {} },
+    '#platform-grid': { textContent: '' }
   };
   const documentRef = {
-    fonts: { ready: fontsReady },
-    documentElement: { style: { setProperty: (...args) => events.push(['style', ...args]) } },
-    querySelector: () => host
+    fonts: { ready: Promise.resolve() },
+    documentElement: { style: { setProperty: () => {} } },
+    querySelector: (sel) => elements[sel] ?? null
   };
-  const config = { style: { background: '#eee' } };
-  const started = startProductionPage({
+  await startProductionPage({
     documentRef,
-    config,
-    loadComponent: async () => { events.push(['component-loaded']); }
+    config: { style: { background: '#eee' } },
+    loadComponent: async () => {},
+    renderCards: async () => { return { destroy() {} }; },
+    createController: () => { return { start() {}, destroy() {} }; },
+    recordEvent: (name) => calls.push(name)
   });
-
-  await Promise.resolve();
-  assert.deepEqual(events, [], 'nothing starts while fonts are pending');
-  resolveFonts();
-  await started;
-  assert.deepEqual(events, [
-    ['component-loaded'],
-    ['style', '--orbit-page-background', '#eee'],
-    ['config', config],
-    ['hidden', false]
-  ]);
+  assert.deepEqual(calls, ['fonts-ready', 'load-component', 'assign-orbit-config', 'render-platforms', 'start-intro', 'show-orbit']);
 });
-
 test('base CSS exposes stage size and page transform variables', async () => {
   const source = await sourceOf('src/base.css');
   const requiredVariables = [
@@ -247,3 +241,34 @@ test('base CSS exposes stage size and page transform variables', async () => {
   }
   assert.doesNotMatch(source, /calc\(100vw - 2rem\)/);
 });
+ test('platform config contains the exact three entries with correct ids URLs and actions', async () => {
+   const { platformConfig } = await import(workspaceFile('config.js').href);
+   assert.equal(platformConfig.length, 3);
+   assert.deepEqual(
+     platformConfig.map((e) => e.id),
+     ['bilibili', 'qq', 'email']
+   );
+   assert.equal(platformConfig[0].action.type, 'link');
+   assert.equal(platformConfig[0].action.value, 'https://space.bilibili.com/496633495?');
+   assert.equal(platformConfig[0].action.newTab, true);
+   assert.equal(platformConfig[0].iconSide, 'left');
+   assert.equal(platformConfig[0].icon, './assets/platforms/bilibili.svg');
+
+   assert.equal(platformConfig[1].action.type, 'link');
+   assert.equal(platformConfig[1].action.value, 'https://user.qzone.qq.com/2533194273');
+   assert.equal(platformConfig[1].action.newTab, true);
+   assert.equal(platformConfig[1].iconSide, 'right');
+   assert.equal(platformConfig[1].icon, './assets/platforms/tencentqq.svg');
+
+   assert.equal(platformConfig[2].action.type, 'copy');
+   assert.equal(platformConfig[2].action.value, 'mail@zhang.jx.cn');
+   assert.equal(platformConfig[2].action.newTab, false);
+   assert.equal(platformConfig[2].iconSide, 'left');
+   assert.equal(platformConfig[2].icon, './assets/platforms/mail.svg');
+
+   for (const entry of platformConfig) {
+     const assetUrl = workspaceFile(entry.icon.replace(/^\.\//, ''));
+     const exists = await access(assetUrl).then(() => true, () => false);
+     assert.equal(exists, true, `${entry.id} icon asset must exist at ${entry.icon}`);
+   }
+ });

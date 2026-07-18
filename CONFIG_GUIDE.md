@@ -349,6 +349,27 @@ export const animationConfig = normalizeConfig({
 
 示例没有重复写旧版缓动字段；省略它们不会影响当前动画。
 
+## 平台入口配置
+
+正式页另有独立的 `platformConfig` 数组，不属于 Orbit 动画配置：
+
+```js
+export const platformConfig = normalizePlatformConfig([
+  {
+    id: 'email',
+    title: '邮箱',
+    description: '复制邮箱地址，与我取得联系',
+    icon: './assets/platforms/mail.svg',
+    iconSide: 'left',
+    action: { type: 'copy', value: 'mail@zhang.jx.cn', newTab: false }
+  }
+]);
+```
+
+字段说明：`id` 是稳定唯一标识；`title` 和 `description` 为非空显示文本；`icon` 可填写本地相对路径或图片 URL；`iconSide` 只能是 `left` 或 `right`；`action.type` 只能是 `link` 或 `copy`；`action.value` 是链接地址或待复制文本；`action.newTab` 仅对 `link` 生效，设为 `true` 时使用安全的新标签页打开。
+
+开发者页“平台入口”区域会保留无效原始行并显示行内错误；无效行不会进入实时预览、复制内容或下载文件。平台导出使用独立的 `platform-config.json`，不会改变 Orbit 的 `orbit-text-config.json` 格式。
+
 ## 常用配方
 
 ### 更慢、更有展示感
