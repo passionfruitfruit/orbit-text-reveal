@@ -1,3 +1,5 @@
+import { computeResponsiveStageWidth } from './responsive-layout.js?v=20260724-1';
+
 export function clampProgress(value) {
   return Math.min(1, Math.max(0, value));
 }
@@ -54,6 +56,7 @@ export function computeIntroFrame(progress, viewport, { reducedMotion = false } 
 
   return {
     progress: p,
+    orbitStageWidth: computeResponsiveStageWidth(width, height),
     orbitScale,
     orbitOffsetY,
     platformOpacity,
@@ -115,6 +118,7 @@ export function createIntroScrollController({
   };
 
   function applyFrame(frame) {
+    host.style.setProperty('--orbit-stage-width', `${frame.orbitStageWidth}px`);
     host.style.setProperty('--orbit-page-y', `${frame.orbitOffsetY}px`);
     host.style.setProperty('--orbit-page-scale', String(frame.orbitScale));
     platforms.style.setProperty('--platform-opacity', String(frame.platformOpacity));

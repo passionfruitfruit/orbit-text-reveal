@@ -471,3 +471,11 @@ texts: [
 ### `config.js` 控制的是内部位置还是网页位置
 
 `layout.x` 和 `layout.y` 控制组件内部中心。要移动整个组件，请在父页面用普通 CSS 设置宿主元素的 `position`、`left`、`top`、`width`、`height` 或 `transform`。
+
+## 统一后台中的配置
+
+Sites 版网页的 `/admin` 统一后台可以保存首屏文字与平台入口配置。首屏文字仍使用本文档描述的 Orbit JSON 结构；平台入口使用名称、简介、图标路径、图标方向和链接/复制动作结构。服务端保存前会再次调用标准化逻辑，避免无效数值或缺失字段直接破坏正式页。
+
+数据库暂时不可用或尚无后台配置时，正式页会回退到根目录 `config.js` 中的 `animationConfig` 与 `platformConfig`。因此 `config.js` 仍是可独立运行的静态保底配置，`dev.html` 也继续用于组件级预览。
+
+正式个人网页的响应式舞台由 `src/responsive-layout.js` 计算，并由 `src/intro-scroll.js` 写入 `--orbit-stage-width`。它只改变宿主可用宽度：桌面端从 `40vw` 起步，移动端封顶为 `77.7777778vw`，中间随视口宽高连续过渡。组件内部仍按照本指南的 `layout.maxWidth`、安全边距和自动拟合规则重新测量，因此不会改变展开、收回和精确回中的时间轴语义。

@@ -1,7 +1,14 @@
 .DS_Store
 node_modules/
 *.log
+.next/
+.wrangler/
+dist/
+public/orbit/
+.env*
+!.env.example
 .superpowers/
+.worktrees/
 artifacts/
 docs/superpowers/
 task_plan.md

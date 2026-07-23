@@ -1,6 +1,6 @@
 import { animationConfig, platformConfig } from './config.js?v=20260718-3';
  import { renderPlatformCards } from './src/platform-renderer.js?v=20260718-3';
- import { createIntroScrollController } from './src/intro-scroll.js?v=20260718-4';
+ import { createIntroScrollController } from './src/intro-scroll.js?v=20260724-1';
 
 export async function startProductionPage({
    documentRef = globalThis.document,
@@ -54,6 +54,6 @@ export async function startProductionPage({
    return { host, platformView, introController };
  }
 
- if (typeof document !== 'undefined') {
+ if (typeof document !== 'undefined' && !globalThis.__ORBIT_MANAGED_BOOTSTRAP__) {
    await startProductionPage();
  }

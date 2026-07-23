@@ -206,6 +206,32 @@ orbit-text-reveal {
 - `src/stage-layout.js`：响应式舞台拟合。
 - `tests/browser.html`：真实浏览器集成测试入口。
 
+## 完整个人网页
+
+项目现在同时包含 Sites 版个人网页、D1 持久化内容和独立统一后台：
+
+- `/`：Orbit 首屏、平台入口、Bilibili/GitHub/博客混合内容流和公开留言。
+- `/blog/:id`：安全 Markdown 站内文章。
+- `/admin`：首屏文字、平台入口、内容来源、混合排序、博客和留言审核。
+- `dev.html`：仍是独立的 Orbit 组件开发预览，不承担网站后台职责。
+
+本地开发与部署构建：
+
+```bash
+npm install
+npm run dev
+npm test
+npm run build
+```
+
+私密运行值从 `.env.example` 开始配置。`ADMIN_PASSWORD` 是后台口令，`RATE_LIMIT_SALT` 用于生成不可逆的限流标识，`GITHUB_TOKEN` 可选并只用于提高 GitHub API 限额。这些值不能写入前端代码或提交到 Git。
+
+D1 使用 `.openai/hosting.json` 中的逻辑绑定 `DB`。首次 API 请求会幂等创建表并写入默认 Bilibili UID `496633495` 与 GitHub 用户 `passionfruitfruit`；迁移文件同时保存在 `drizzle/` 供 Sites 部署使用。
+
+首屏舞台宽度按视口宽高连续计算：最宽桌面端为视口的 `40%`，对应左右留白/文本区域/左右留白 `3/4/3`；最窄移动端为 `7/9`，对应 `1/7/1`。运行时会把实际像素宽度写入组件，CSS 中的 `clamp()` 仍作为无 JavaScript 时的保底。
+
+Bilibili 投稿同步使用未登录的公开 WBI 签名请求，不保存账号 Cookie。由于 Bilibili 可能对数据中心出口临时返回 `412`，数据库还会幂等写入已核验的近期投稿作为保底；自动同步恢复后会按 BV 号更新这些条目，并继续保留后台设置的显隐和排序。失败同步按六小时冷却，不会在每次页面访问时重复请求。
+
 ## 贡献者
 
 - Luke：项目所有者、动画方向与交互需求。

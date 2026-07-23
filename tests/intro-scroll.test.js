@@ -93,6 +93,7 @@ test('controller initializes platform section hidden and writes variables on own
   const controller = createIntroScrollController({ ...harness, settle: false });
   harness.windowRef.flushRaf();
   assert.equal(harness.host.style.values['--orbit-page-scale'], '1');
+  assert.equal(harness.host.style.values['--orbit-stage-width'], '768px');
   assert.equal(harness.platforms.style.values['--platform-opacity'], '0');
   assert.equal(harness.platforms.style.values['--platform-translate-y'], '24px');
   assert.equal(harness.platforms.inert, true);
@@ -100,6 +101,23 @@ test('controller initializes platform section hidden and writes variables on own
   controller.destroy();
   assert.equal(harness.listeners.size, 0);
   assert.equal(harness.rafs.size, 0);
+});
+
+test('controller updates the stage width to the mobile 1/7/1 ratio on resize', () => {
+  const harness = createControllerHarness();
+  const controller = createIntroScrollController({ ...harness, settle: false });
+  harness.windowRef.flushRaf();
+
+  harness.windowRef.innerWidth = 320;
+  harness.windowRef.innerHeight = 844;
+  harness.listeners.get('resize')();
+  harness.windowRef.flushRaf();
+
+  assert.equal(
+    Number.parseFloat(harness.host.style.values['--orbit-stage-width']),
+    320 * (7 / 9),
+  );
+  controller.destroy();
 });
 
 test('controller damps sparse scroll updates across animation frames', () => {

@@ -72,12 +72,12 @@ test('production page declares semantic platform structure', async () => {
 
 test('production page uses the current main cache key and preserves Orbit cache key', async () => {
   const source = await productionSource();
-  assert.match(source, /base\.css\?v=20260718-9/);
-  assert.match(source, /main\.js\?v=20260718-4/);
+  assert.match(source, /base\.css\?v=20260724-1/);
+  assert.match(source, /main\.js\?v=20260724-1/);
   assert.doesNotMatch(source, /main\.js\?v=20260718-3/);
   const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
   assert.match(main, /orbit-text-reveal\.js\?v=20260718-2/);
-  assert.match(main, /intro-scroll\.js\?v=20260718-4/);
+  assert.match(main, /intro-scroll\.js\?v=20260724-1/);
 });
 
 test('production CSS keeps mobile cards reachable and uses fixed platform heading sizes', async () => {
