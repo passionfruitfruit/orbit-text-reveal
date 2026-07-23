@@ -16,8 +16,18 @@ test('home preserves every Orbit hook before the new public sections', async () 
 test('React shell loads versioned Orbit assets so responsive fixes bypass stale caches', async () => {
   const layout = await read('app/layout.tsx');
   const home = await read('app/components/home-experience.tsx');
-  assert.match(layout, /\/orbit\/src\/base\.css\?v=20260724-1/);
-  assert.match(home, /\/orbit\/main\.js\?v=20260724-1/);
+  assert.match(layout, /\/orbit\/src\/base\.css\?v=20260724-2/);
+  assert.match(home, /\/orbit\/main\.js\?v=20260724-2/);
+});
+
+test('platform and content cards share one horizontal column contract', async () => {
+  const orbitCss = await read('src/base.css');
+  const appCss = await read('app/globals.css');
+
+  assert.match(orbitCss, /--home-column-width:\s*min\(760px,\s*calc\(100vw - 32px\)\)/);
+  assert.match(orbitCss, /\.platforms\s*\{[^}]*width:\s*var\(--home-column-width\)/s);
+  assert.match(appCss, /\.page-column\s*\{[^}]*width:\s*var\(--home-column-width/s);
+  assert.match(appCss, /\.page-band\s*\{[^}]*padding-inline:\s*0/s);
 });
 
 test('content feed uses one column, ten items, all three content types, and page controls', async () => {

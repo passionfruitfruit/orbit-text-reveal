@@ -11,7 +11,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="zh-CN">
       <head>
-        <link rel="stylesheet" href="/orbit/src/base.css?v=20260724-1" />
+        <link rel="stylesheet" href="/orbit/src/base.css?v=20260724-2" />
       </head>
       <body>{children}</body>
     </html>

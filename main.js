@@ -1,6 +1,13 @@
 import { animationConfig, platformConfig } from './config.js?v=20260718-3';
  import { renderPlatformCards } from './src/platform-renderer.js?v=20260718-3';
- import { createIntroScrollController } from './src/intro-scroll.js?v=20260724-1';
+ import { createIntroScrollController } from './src/intro-scroll.js?v=20260724-2';
+
+export function resolvePlatformAssets(entries, baseUrl = import.meta.url) {
+  return entries.map((entry) => ({
+    ...entry,
+    icon: new URL(entry.icon, baseUrl).href,
+  }));
+}
 
 export async function startProductionPage({
    documentRef = globalThis.document,
@@ -37,7 +44,7 @@ export async function startProductionPage({
    host.config = config;
 
    record('render-platforms');
-   const platformView = renderCards(grid, platformData);
+   const platformView = renderCards(grid, resolvePlatformAssets(platformData));
 
    record('start-intro');
    const introController = createController({

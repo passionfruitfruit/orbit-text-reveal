@@ -8,6 +8,7 @@
   --orbit-page-y: 0px;
   --orbit-page-scale: 1;
   --intro-travel: clamp(520px, 85svh, 900px);
+  --home-column-width: min(760px, calc(100vw - 32px));
   --platform-opacity: 0;
   --platform-translate-y: 0px;
 }
@@ -54,19 +55,20 @@ orbit-text-reveal[hidden] {
 
 
 .intro-sequence {
-  min-height: calc(100svh + var(--intro-travel));
+  padding-bottom: var(--intro-travel);
 }
 
 .intro-scene {
   position: sticky;
   top: 0;
-  height: 100svh;
-  height: 100dvh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  height: auto;
   overflow: visible;
 }
 
 .platforms {
-  width: min(calc(100vw - 32px), calc(52vw + 121.6px), 1120px);
+  width: var(--home-column-width);
   margin-inline: auto;
   padding-block: clamp(250px, 36svh, 380px) 48px;
   opacity: var(--platform-opacity);

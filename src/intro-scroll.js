@@ -90,7 +90,12 @@ export function createIntroScrollController({
   let lastInteractive = null;
   let activeSettle = null;
   let lastFrameTime = null;
-  const getTravel = () => Math.max(0, sequence.scrollHeight - windowRef.innerHeight);
+  const scene = platforms.parentElement;
+  const getSceneHeight = () => Math.max(
+    windowRef.innerHeight,
+    Number(scene?.scrollHeight) || 0
+  );
+  const getTravel = () => Math.max(0, sequence.scrollHeight - getSceneHeight());
   const getScrollTop = () => Math.max(0, -sequence.getBoundingClientRect().top);
   const getProgress = () => {
     const travel = getTravel();
@@ -214,7 +219,7 @@ export function createIntroScrollController({
       if (currentProgress <= 0 || currentProgress >= 1) return;
       const targetTop = currentProgress < 0.5 || (currentProgress === 0.5 && lastScrollDirection <= 0)
         ? 0
-        : sequence.scrollHeight - windowRef.innerHeight;
+        : currentTravel;
       activeSettle = {
         fromTop: currentTop,
         toTop: targetTop,

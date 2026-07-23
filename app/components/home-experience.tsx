@@ -17,7 +17,7 @@ export function HomeExperience() {
     let disposed = false;
     let result: any;
     window.__ORBIT_MANAGED_BOOTSTRAP__ = true;
-    const orbitModuleUrl = '/orbit/main.js?v=20260724-1';
+    const orbitModuleUrl = '/orbit/main.js?v=20260724-2';
     Promise.all([
       import(/* @vite-ignore */ orbitModuleUrl),
       fetch('/api/public/config').then((response) => response.ok ? response.json() : null).catch(() => null),

@@ -36,7 +36,7 @@ test('damped progress is monotonic and frame-rate independent', () => {
   assert.equal(advanceDampedProgress(0.99999, 1, 16, 72), 1);
 });
 
-function createControllerHarness({ reduced = false } = {}) {
+function createControllerHarness({ reduced = false, innerHeight = 1080, sceneHeight = 1080, sequenceHeight = 2080 } = {}) {
   const listeners = new Map();
   const rafs = new Map();
   const timers = new Map();
@@ -55,7 +55,7 @@ function createControllerHarness({ reduced = false } = {}) {
   };
   const windowRef = {
     innerWidth: 1920,
-    innerHeight: 1080,
+    innerHeight,
     matchMedia: () => media,
     addEventListener(type, listener) { listeners.set(type, listener); },
     removeEventListener(type, listener) { if (listeners.get(type) === listener) listeners.delete(type); },
@@ -75,18 +75,34 @@ function createControllerHarness({ reduced = false } = {}) {
   const host = { style: { values: {}, setProperty(name, value) { this.values[name] = value; } } };
   const platforms = {
     style: { values: {}, setProperty(name, value) { this.values[name] = value; } },
-    parentElement: { style: { setProperty() {} } },
+    parentElement: { scrollHeight: sceneHeight, style: { setProperty() {} } },
     inert: false,
     attrs: {},
     setAttribute(name, value) { this.attrs[name] = value; },
     children: []
   };
-  const sequence = { scrollHeight: 2080, getBoundingClientRect: () => ({ top: sequenceTop }) };
+  const sequence = { scrollHeight: sequenceHeight, getBoundingClientRect: () => ({ top: sequenceTop }) };
   return {
     windowRef, host, platforms, sequence, listeners, rafs, timers, scrollCalls, media,
     setSequenceTop(value) { sequenceTop = value; }
   };
 }
+
+test('tall platform scenes do not lengthen the approved intro motion', () => {
+  const harness = createControllerHarness({
+    reduced: true,
+    innerHeight: 374,
+    sceneHeight: 828,
+    sequenceHeight: 1348,
+  });
+  harness.setSequenceTop(-520);
+  const controller = createIntroScrollController({ ...harness, settle: false });
+  harness.windowRef.flushRaf();
+
+  assert.equal(harness.host.style.values['--orbit-page-scale'], '0.65');
+  assert.equal(harness.platforms.style.values['--platform-opacity'], '1');
+  controller.destroy();
+});
 
 test('controller initializes platform section hidden and writes variables on owned nodes', () => {
   const harness = createControllerHarness();

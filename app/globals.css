@@ -11,9 +11,9 @@ body { color: #000; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
 button, input, textarea { font: inherit; letter-spacing: 0; }
 button { cursor: pointer; }
 
-.page-band { width: 100%; padding: 72px 20px; }
+.page-band { width: 100%; padding: 72px 0; padding-inline: 0; }
 .page-band--comments { padding-bottom: 120px; }
-.page-column { width: min(760px, 100%); margin-inline: auto; }
+.page-column { width: var(--home-column-width, min(760px, calc(100vw - 32px))); margin-inline: auto; }
 .section-heading { margin: 0 0 24px; font-size: 28px; line-height: 1.2; letter-spacing: 0; }
 .section-status { margin: 12px 0; color: var(--muted); }
 
@@ -69,7 +69,7 @@ button { cursor: pointer; }
 .blog-body code { padding: 2px 5px; border-radius: 4px; background: rgba(0,0,0,.07); }
 
 @media (max-width: 599px) {
-  .page-band { padding: 54px 16px; }
+  .page-band { padding-block: 54px; padding-inline: 0; }
   .section-heading { font-size: 24px; }
   .content-card { grid-template-columns: 104px minmax(0, 1fr); min-height: 132px; border-radius: 20px; }
   .content-card__body { padding: 16px; }
