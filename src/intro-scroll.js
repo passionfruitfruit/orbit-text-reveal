@@ -5,6 +5,15 @@ export function clampProgress(value) {
 }
 
 const DAMPING_EPSILON = 0.0001;
+const PLATFORM_APPEAR_START = 0.45;
+const PLATFORM_APPEAR_END = 0.75;
+const PLATFORM_SETTLE_START = 0.84;
+const PLATFORM_SETTLE_END = 0.9;
+const PLATFORM_OVERSHOOT_PX = 5;
+const PLATFORM_ENTRY_OFFSET_PX = 24;
+const ORBIT_START_OFFSET_RATIO = -0.035;
+const SCROLL_SETTLE_DELAY_MS = 140;
+const SCROLL_SETTLE_DURATION_MS = 260;
 
 export function advanceDampedProgress(current, target, deltaMs, responseMs = 72) {
   const from = clampProgress(current);
@@ -17,6 +26,33 @@ export function advanceDampedProgress(current, target, deltaMs, responseMs = 72)
   return Math.abs(to - next) <= DAMPING_EPSILON ? to : next;
 }
 
+function nonNegativeFinite(value) {
+  return Math.max(0, Number.isFinite(value) ? value : 0);
+}
+
+export function computeIntroScrollGeometry({
+  viewportHeight,
+  sceneHeight,
+  sequenceHeight,
+  travel,
+} = {}) {
+  const viewport = nonNegativeFinite(viewportHeight);
+  const scene = Math.max(viewport, nonNegativeFinite(sceneHeight));
+  const approvedTravel = nonNegativeFinite(travel);
+  const sequence = Math.max(
+    scene + approvedTravel,
+    nonNegativeFinite(sequenceHeight),
+  );
+
+  return {
+    viewportHeight: viewport,
+    sceneHeight: scene,
+    sequenceHeight: sequence,
+    travel: approvedTravel,
+    naturalOverflow: Math.max(0, scene - viewport),
+  };
+}
+
 export function computeIntroFrame(progress, viewport, { reducedMotion = false } = {}) {
   const p = clampProgress(progress);
   const { width, height } = viewport;
@@ -25,31 +61,31 @@ export function computeIntroFrame(progress, viewport, { reducedMotion = false } 
     Math.max(0.18 * height, 0.15 * height + 0.03 * width),
     0.20 * height
   );
+  const orbitStartOffsetY = ORBIT_START_OFFSET_RATIO * height;
   const orbitScale = 1 - 0.35 * p;
-  const orbitOffsetY = p === 0 ? 0 : p * (orbitTargetY - centerY);
+  const orbitOffsetY = orbitStartOffsetY
+    + p * (orbitTargetY - centerY - orbitStartOffsetY);
 
-  const platformAppearStart = 0.62;
-  const platformAppearEnd = 0.88;
-  const platformOpacity = p <= platformAppearStart
+  const platformOpacity = p <= PLATFORM_APPEAR_START
     ? 0
-    : p >= platformAppearEnd
+    : p >= PLATFORM_APPEAR_END
       ? 1
-      : (p - platformAppearStart) / (platformAppearEnd - platformAppearStart);
+      : (p - PLATFORM_APPEAR_START) / (PLATFORM_APPEAR_END - PLATFORM_APPEAR_START);
 
   let platformTranslateY;
   if (reducedMotion) {
-    platformTranslateY = 24 * (1 - p);
-  } else if (p < 0.62) {
-    platformTranslateY = 24;
-  } else if (p < 0.84) {
-    const t = (p - 0.62) / (0.84 - 0.62);
-    platformTranslateY = 24 * (1 - t);
-  } else if (p < 0.90) {
-    const t = (p - 0.84) / (0.90 - 0.84);
-    platformTranslateY = -5 * t;
-  } else if (p < 1) {
-    const t = (p - 0.90) / (1 - 0.90);
-    platformTranslateY = -5 * (1 - t);
+    platformTranslateY = PLATFORM_ENTRY_OFFSET_PX * (1 - p);
+  } else if (p < PLATFORM_APPEAR_START) {
+    platformTranslateY = PLATFORM_ENTRY_OFFSET_PX;
+  } else if (p < PLATFORM_APPEAR_END) {
+    const t = (p - PLATFORM_APPEAR_START) / (PLATFORM_APPEAR_END - PLATFORM_APPEAR_START);
+    platformTranslateY = PLATFORM_ENTRY_OFFSET_PX * (1 - t);
+  } else if (p < PLATFORM_SETTLE_START) {
+    const t = (p - PLATFORM_APPEAR_END) / (PLATFORM_SETTLE_START - PLATFORM_APPEAR_END);
+    platformTranslateY = -PLATFORM_OVERSHOOT_PX * t;
+  } else if (p < PLATFORM_SETTLE_END) {
+    const t = (p - PLATFORM_SETTLE_START) / (PLATFORM_SETTLE_END - PLATFORM_SETTLE_START);
+    platformTranslateY = -PLATFORM_OVERSHOOT_PX * (1 - t);
   } else {
     platformTranslateY = 0;
   }
@@ -91,11 +127,23 @@ export function createIntroScrollController({
   let activeSettle = null;
   let lastFrameTime = null;
   const scene = platforms.parentElement;
-  const getSceneHeight = () => Math.max(
-    windowRef.innerHeight,
-    Number(scene?.scrollHeight) || 0
-  );
-  const getTravel = () => Math.max(0, sequence.scrollHeight - getSceneHeight());
+  const getSceneHeight = () => Math.max(windowRef.innerHeight, Number(scene?.scrollHeight) || 0);
+  const getConfiguredTravel = () => {
+    const spacerStyle = windowRef.getComputedStyle?.(sequence, '::after');
+    const spacerHeight = Number.parseFloat(spacerStyle?.height ?? '');
+    if (Number.isFinite(spacerHeight)) return Math.max(0, spacerHeight);
+    const style = windowRef.getComputedStyle?.(sequence);
+    const configured = Number.parseFloat(style?.getPropertyValue?.('--intro-travel') ?? '');
+    if (Number.isFinite(configured)) return Math.max(0, configured);
+    return Math.max(0, sequence.scrollHeight - getSceneHeight());
+  };
+  const getGeometry = () => computeIntroScrollGeometry({
+    viewportHeight: windowRef.innerHeight,
+    sceneHeight: Number(scene?.scrollHeight) || 0,
+    sequenceHeight: Number(sequence.scrollHeight) || 0,
+    travel: getConfiguredTravel(),
+  });
+  const getTravel = () => getGeometry().travel;
   const getScrollTop = () => Math.max(0, -sequence.getBoundingClientRect().top);
   const getProgress = () => {
     const travel = getTravel();
@@ -105,7 +153,7 @@ export function createIntroScrollController({
   let targetProgress = getProgress();
   let displayedProgress = targetProgress;
   let lastScrollDirection = 0;
-  const cardElements = asCards(platforms, cards);
+  let cardElements = asCards(platforms, cards);
   const media = typeof windowRef.matchMedia === 'function'
     ? windowRef.matchMedia(reducedMotionQuery)
     : null;
@@ -227,10 +275,10 @@ export function createIntroScrollController({
         fromDisplayedProgress: displayedProgress,
         toProgress: clampProgress(targetTop / currentTravel),
         startedAt: null,
-        durationMs: 260
+        durationMs: SCROLL_SETTLE_DURATION_MS
       };
       scheduleFrame();
-    }, 140) ?? null;
+    }, SCROLL_SETTLE_DELAY_MS) ?? null;
   }
 
   function scheduleFrame() {
@@ -283,6 +331,10 @@ export function createIntroScrollController({
   return {
     start: scheduleFrame,
     update: scheduleFrame,
+    refreshCards() {
+      cardElements = asCards(platforms, cards);
+      scheduleFrame();
+    },
     destroy() {
       if (isDestroyed) return;
       isDestroyed = true;

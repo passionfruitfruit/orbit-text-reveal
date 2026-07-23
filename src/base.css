@@ -33,6 +33,8 @@ body {
 orbit-text-reveal {
   position: absolute;
   top: 50%;
+  top: 50svh;
+  top: 50dvh;
   left: 50%;
   width: min(var(--orbit-stage-width), 100vw);
   height: min(var(--orbit-stage-height), 100svh);
@@ -55,7 +57,15 @@ orbit-text-reveal[hidden] {
 
 
 .intro-sequence {
-  padding-bottom: var(--intro-travel);
+  min-height: 100svh;
+  min-height: 100dvh;
+}
+
+.intro-sequence::after {
+  content: '';
+  display: block;
+  height: var(--intro-travel);
+  pointer-events: none;
 }
 
 .intro-scene {

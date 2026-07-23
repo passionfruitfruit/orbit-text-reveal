@@ -89,13 +89,13 @@ export function renderPlatformCards(container, entries, options = {}) {
   }
 
   return {
-    destroy() {
+    destroy({ clear = true } = {}) {
       destroyed = true;
       for (const [button, listener] of listeners) button.removeEventListener('click', listener);
       listeners.length = 0;
       for (const timer of statusTimers) clearTimeoutFn(timer);
       statusTimers.clear();
-      container.textContent = '';
+      if (clear) container.textContent = '';
     }
   };
 }

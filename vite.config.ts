@@ -14,6 +14,7 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
+  assets: { run_worker_first: ["/", "/admin", "/api/*", "/blog/*"] },
   d1_databases: d1
     ? [
         {
@@ -44,6 +45,9 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    // The repository keeps a standalone Orbit demo at /index.html. Disable
+    // Vite's HTML fallback so Vinext can own the application route at `/`.
+    appType: "custom",
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,

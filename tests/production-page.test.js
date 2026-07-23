@@ -56,6 +56,10 @@ test('base.css declares continuous fluid stage width and font size', async () =>
     css,
     /height:\s*min\(var\(--orbit-stage-height\),\s*100svh\);\s*height:\s*min\(var\(--orbit-stage-height\),\s*100dvh\);/s
   );
+  assert.match(
+    css,
+    /orbit-text-reveal\s*\{[^}]*top:\s*50%;[^}]*top:\s*50svh;[^}]*top:\s*50dvh;/s
+  );
   assert.doesNotMatch(css, /calc\(100vw - 2rem\)/);
   assert.doesNotMatch(css, /32\.4444444vw \+ 145\.0666667px/);
   assert.doesNotMatch(css, /2\.8125vw \+ 10px/);
@@ -72,12 +76,13 @@ test('production page declares semantic platform structure', async () => {
 
 test('production page uses the current main cache key and preserves Orbit cache key', async () => {
   const source = await productionSource();
-  assert.match(source, /base\.css\?v=20260724-2/);
-  assert.match(source, /main\.js\?v=20260724-2/);
+  assert.match(source, /base\.css\?v=20260724-4/);
+  assert.match(source, /main\.js\?v=20260724-7/);
   assert.doesNotMatch(source, /main\.js\?v=20260718-3/);
   const main = await readFile(new URL('../main.js', import.meta.url), 'utf8');
   assert.match(main, /orbit-text-reveal\.js\?v=20260718-2/);
-  assert.match(main, /intro-scroll\.js\?v=20260724-2/);
+  assert.match(main, /platform-renderer\.js\?v=20260724-1/);
+  assert.match(main, /intro-scroll\.js\?v=20260724-5/);
   assert.match(main, /new URL\(entry\.icon,\s*baseUrl\)\.href/);
 });
 
@@ -87,7 +92,14 @@ test('production CSS keeps mobile cards reachable and uses fixed platform headin
   assert.doesNotMatch(css, /html,\s*\nbody\s*\{[^}]*overflow/s);
   assert.doesNotMatch(css, /body\s*\{[^}]*overflow-(?:x|y):/s);
   assert.match(css, /\.intro-scene\s*\{[^}]*overflow:\s*visible/s);
-  assert.match(css, /\.intro-sequence\s*\{[^}]*padding-bottom:\s*var\(--intro-travel\)/s);
+  assert.match(
+    css,
+    /\.intro-sequence::after\s*\{[^}]*display:\s*block;[^}]*height:\s*var\(--intro-travel\)/s
+  );
+  assert.doesNotMatch(
+    css,
+    /\.intro-sequence\s*\{[^}]*padding-bottom:\s*var\(--intro-travel\)/s
+  );
   assert.match(css, /\.intro-scene\s*\{[^}]*min-height:\s*100svh;[^}]*min-height:\s*100dvh;[^}]*height:\s*auto;/s);
   assert.match(css, /\.platforms__heading\s*\{[^}]*font-size:\s*26px/s);
   assert.match(css, /@media\s*\(max-width:\s*599px\)[\s\S]*?\.platforms__heading\s*\{[^}]*font-size:\s*22px/s);

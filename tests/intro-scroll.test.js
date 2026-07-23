@@ -3,6 +3,7 @@
 import {
   advanceDampedProgress,
   clampProgress,
+  computeIntroScrollGeometry,
   computeIntroFrame,
   createIntroScrollController
 } from '../src/intro-scroll.js';
@@ -13,16 +14,26 @@ import {
    const start = computeIntroFrame(0, { width: 1920, height: 1080 });
    const end = computeIntroFrame(1, { width: 1920, height: 1080 });
    assert.equal(start.orbitScale, 1);
-   assert.equal(start.orbitOffsetY, 0);
+   assert.ok(Math.abs(start.orbitOffsetY - (-37.8)) < 1e-9);
    assert.equal(end.orbitScale, 0.65);
    assert.equal(end.orbitOffsetY, 216 - 540);
  });
 
-test('platforms fade after 0.62 and overshoot before settling', () => {
-   assert.equal(computeIntroFrame(0.61, { width: 1280, height: 800 }).platformOpacity, 0);
-   assert.ok(computeIntroFrame(0.8, { width: 1280, height: 800 }).platformOpacity > 0);
-   assert.ok(computeIntroFrame(0.9, { width: 1280, height: 800 }).platformTranslateY < 0);
-   assert.equal(computeIntroFrame(1, { width: 1280, height: 800 }).platformTranslateY, 0);
+test('opening Orbit uses a modest responsive optical lift', () => {
+  const desktop = computeIntroFrame(0, { width: 1280, height: 720 });
+  const mobile = computeIntroFrame(0, { width: 430, height: 374 });
+
+  assert.ok(Math.abs(desktop.orbitOffsetY - (-25.2)) < 1e-9);
+  assert.ok(Math.abs(mobile.orbitOffsetY - (-13.09)) < 1e-9);
+});
+
+test('platform reveal starts at 0.45 and is complete by 0.75', () => {
+   assert.equal(computeIntroFrame(0.45, { width: 1280, height: 863 }).platformOpacity, 0);
+   assert.ok(computeIntroFrame(0.6, { width: 1280, height: 863 }).platformOpacity > 0);
+   assert.equal(computeIntroFrame(0.75, { width: 1280, height: 863 }).platformOpacity, 1);
+   assert.equal(computeIntroFrame(0.75, { width: 1280, height: 863 }).interactive, true);
+   assert.ok(computeIntroFrame(0.84, { width: 1280, height: 863 }).platformTranslateY < 0);
+   assert.equal(computeIntroFrame(1, { width: 1280, height: 863 }).platformTranslateY, 0);
 });
 
 test('damped progress is monotonic and frame-rate independent', () => {
@@ -36,6 +47,36 @@ test('damped progress is monotonic and frame-rate independent', () => {
   assert.equal(advanceDampedProgress(0.99999, 1, 16, 72), 1);
 });
 
+test('intro geometry separates approved travel from tall-scene overflow', () => {
+  assert.deepEqual(computeIntroScrollGeometry({
+    viewportHeight: 374,
+    sceneHeight: 828,
+    sequenceHeight: 1348,
+    travel: 520,
+  }), {
+    viewportHeight: 374,
+    sceneHeight: 828,
+    sequenceHeight: 1348,
+    travel: 520,
+    naturalOverflow: 454,
+  });
+});
+
+test('intro geometry clamps invalid and undersized values', () => {
+  assert.deepEqual(computeIntroScrollGeometry({
+    viewportHeight: 800,
+    sceneHeight: 600,
+    sequenceHeight: 500,
+    travel: -10,
+  }), {
+    viewportHeight: 800,
+    sceneHeight: 800,
+    sequenceHeight: 800,
+    travel: 0,
+    naturalOverflow: 0,
+  });
+});
+
 function createControllerHarness({ reduced = false, innerHeight = 1080, sceneHeight = 1080, sequenceHeight = 2080 } = {}) {
   const listeners = new Map();
   const rafs = new Map();
@@ -44,6 +85,7 @@ function createControllerHarness({ reduced = false, innerHeight = 1080, sceneHei
   let nextRaf = 1;
   let nextTimer = 1;
   let sequenceTop = 0;
+  let queriedCards = [];
   const media = {
     matches: reduced,
     addEventListener(type, listener) { this.listener = listener; },
@@ -79,14 +121,53 @@ function createControllerHarness({ reduced = false, innerHeight = 1080, sceneHei
     inert: false,
     attrs: {},
     setAttribute(name, value) { this.attrs[name] = value; },
+    querySelectorAll() { return queriedCards; },
     children: []
   };
   const sequence = { scrollHeight: sequenceHeight, getBoundingClientRect: () => ({ top: sequenceTop }) };
   return {
     windowRef, host, platforms, sequence, listeners, rafs, timers, scrollCalls, media,
-    setSequenceTop(value) { sequenceTop = value; }
+    setSequenceTop(value) { sequenceTop = value; },
+    setQueriedCards(value) { queriedCards = value; }
   };
 }
+
+test('controller refreshes its card cache after platform DOM replacement', () => {
+  const harness = createControllerHarness({ reduced: true });
+  const createCard = () => ({
+    writes: 0,
+    style: {
+      values: {},
+      setProperty(name, value) {
+        this.values[name] = value;
+        if (name === '--platform-card-opacity') this.owner.writes += 1;
+      },
+      owner: null,
+    },
+  });
+  const connectOwner = (card) => {
+    card.style.owner = card;
+    return card;
+  };
+  const removed = connectOwner(createCard());
+  harness.setQueriedCards([removed]);
+  harness.setSequenceTop(-1000);
+  const controller = createIntroScrollController({ ...harness, settle: false });
+  harness.windowRef.flushRaf();
+  const removedWrites = removed.writes;
+
+  const replacements = [connectOwner(createCard()), connectOwner(createCard()), connectOwner(createCard())];
+  harness.setQueriedCards(replacements);
+  controller.refreshCards();
+  harness.windowRef.flushRaf();
+
+  assert.equal(removed.writes, removedWrites);
+  assert.deepEqual(
+    replacements.map((card) => card.style.values['--platform-card-opacity']),
+    ['1', '1', '1'],
+  );
+  controller.destroy();
+});
 
 test('tall platform scenes do not lengthen the approved intro motion', () => {
   const harness = createControllerHarness({
@@ -101,6 +182,25 @@ test('tall platform scenes do not lengthen the approved intro motion', () => {
 
   assert.equal(harness.host.style.values['--orbit-page-scale'], '0.65');
   assert.equal(harness.platforms.style.values['--platform-opacity'], '1');
+  controller.destroy();
+});
+
+test('controller resolves approved travel from the spacer when the scene height changes', () => {
+  const harness = createControllerHarness({
+    reduced: true,
+    innerHeight: 700,
+    sceneHeight: 1140,
+    sequenceHeight: 1711,
+  });
+  harness.windowRef.getComputedStyle = (_element, pseudo) => ({
+    height: pseudo === '::after' ? '595px' : '',
+    getPropertyValue: () => 'clamp(520px, 85svh, 900px)',
+  });
+  harness.setSequenceTop(-297.5);
+  const controller = createIntroScrollController({ ...harness, settle: false });
+  harness.windowRef.flushRaf();
+
+  assert.equal(harness.host.style.values['--orbit-page-scale'], '0.825');
   controller.destroy();
 });
 
@@ -175,10 +275,10 @@ test('controller applies reduced-motion translation directly and staggers cards 
   const harness = createControllerHarness({ reduced: true });
   const cards = [0, 1, 2].map(() => ({ style: { values: {}, setProperty(name, value) { this.values[name] = value; } } }));
   harness.platforms.children = cards;
-  harness.sequence.getBoundingClientRect = () => ({ top: -800 });
+  harness.sequence.getBoundingClientRect = () => ({ top: -600 });
   const controller = createIntroScrollController({ ...harness, cards, settle: false });
   harness.windowRef.flushRaf();
-  assert.ok(Math.abs(Number.parseFloat(harness.platforms.style.values['--platform-translate-y']) - 4.8) < 0.001);
+  assert.ok(Math.abs(Number.parseFloat(harness.platforms.style.values['--platform-translate-y']) - 9.6) < 0.001);
   assert.ok(Number(cards[0].style.values['--platform-card-opacity']) > 0);
   assert.ok(Number(cards[2].style.values['--platform-card-opacity']) < Number(cards[0].style.values['--platform-card-opacity']));
   controller.destroy();

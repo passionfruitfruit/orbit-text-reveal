@@ -149,3 +149,22 @@ test('copy cards use injected clipboard and timers, report success and failure, 
   assert.equal(container.children.length, 0);
   assert.equal(button.listeners.size, 0);
 });
+
+test('replacement cleanup removes old listeners without clearing newly rendered cards', () => {
+  const container = makeContainer();
+  const oldView = renderPlatformCards(container, [{
+    id: 'old', title: '旧平台', description: '旧描述', icon: './old.svg', iconSide: 'left',
+    action: { type: 'copy', value: 'old' },
+  }]);
+  const oldButton = container.children[0];
+
+  renderPlatformCards(container, [{
+    id: 'new', title: '新平台', description: '新描述', icon: './new.svg', iconSide: 'left',
+    action: { type: 'link', value: '/new', newTab: false },
+  }]);
+  oldView.destroy({ clear: false });
+
+  assert.equal(container.children.length, 1);
+  assert.equal(container.children[0].href, '/new');
+  assert.equal(oldButton.listeners.size, 0);
+});

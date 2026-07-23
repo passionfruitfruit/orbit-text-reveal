@@ -36,7 +36,12 @@ test('browser runner names every final handoff invariant', async () => {
     'global retract clock uses the complete configured duration',
     'single-line traversal uses single-line easing',
     'per-text layout override did not reach shared preview',
-    'developer full-loop control restarts from first item'
+    'developer full-loop control restarts from first item',
+    'intro scene remains sticky through approved travel',
+    'platform begins revealing by midpoint',
+    'platform is fully visible before intro travel ends',
+    'tall platform overflow does not extend animation progress',
+    'content stream starts after the complete platform section'
   ];
 
   const fluidEvidence = [

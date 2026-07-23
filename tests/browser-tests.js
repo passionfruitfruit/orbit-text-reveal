@@ -754,7 +754,7 @@ async function runProductionBoundaryCheck() {
   }
 
   const frame = document.createElement('iframe');
-  frame.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;border:0;visibility:hidden;pointer-events:none';
+  frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:1280px;height:863px;border:0;visibility:hidden;pointer-events:none';
   frame.src = `/index.html?browser-test=${Date.now()}`;
   document.body.append(frame);
   await new Promise((resolve, reject) => {
@@ -786,18 +786,46 @@ async function runProductionBoundaryCheck() {
 
   const sequence = frameDocument.querySelector('.intro-sequence');
   const scene = frameDocument.querySelector('.intro-scene');
-  const travel = sequence.scrollHeight - frameWindow.innerHeight;
+  const platforms = frameDocument.querySelector('.platforms');
+  const contentStream = frameDocument.createElement('section');
+  contentStream.id = 'content-stream';
+  frameDocument.querySelector('main').append(contentStream);
+  const travel = sequence.scrollHeight - scene.scrollHeight;
+  check(Number.isFinite(travel) && travel > 0, 'production intro exposes a finite approved travel');
   let scrollIndexEvents = 0;
   const onScrollIndexChange = () => { scrollIndexEvents += 1; };
   probe.addEventListener('orbit-index-change', onScrollIndexChange);
   frameWindow.scrollTo(0, travel * 0.5);
   await nextFrame();
+  frameWindow.dispatchEvent(new frameWindow.Event('touchstart'));
   await nextFrame();
   const stickyRect = scene.getBoundingClientRect();
   const scrolledHostRect = probe.getBoundingClientRect();
-  assertClose(stickyRect.top, 0, 1, 'intro scene stays sticky during the scroll-linked transition');
+  assertClose(stickyRect.top, 0, 1, 'intro scene remains sticky through approved travel');
+  await waitFor(
+    () => Number(frameWindow.getComputedStyle(platforms).opacity) > 0,
+    'platform did not begin revealing at midpoint'
+  );
+  check(Number(frameWindow.getComputedStyle(platforms).opacity) > 0, 'platform begins revealing by midpoint');
   assertClose(scrolledHostRect.left + scrolledHostRect.width / 2, layoutViewportWidth / 2, 1, 'horizontal center while intro scrolls');
   check(scrollIndexEvents === 0, 'intro scroll does not restart or change the Orbit index');
+  frameWindow.scrollTo(0, travel * 0.75);
+  await nextFrame();
+  frameWindow.dispatchEvent(new frameWindow.Event('touchstart'));
+  await waitFor(
+    () => Number(frameWindow.getComputedStyle(platforms).opacity) >= 0.999,
+    'platform did not fully appear by 75% travel'
+  );
+  check(Number(frameWindow.getComputedStyle(platforms).opacity) >= 0.999, 'platform is fully visible before intro travel ends');
+
+  const platformCards = [...frameDocument.querySelectorAll('.platform-card__action')];
+  const contentTop = contentStream.getBoundingClientRect().top + frameWindow.scrollY;
+  const lastPlatformBottom = platformCards.at(-1).getBoundingClientRect().bottom + frameWindow.scrollY;
+  check(
+    contentTop + 1 >= sequence.offsetTop + sequence.offsetHeight
+      && contentTop + 1 >= lastPlatformBottom,
+    'content stream starts after the complete platform section'
+  );
   probe.removeEventListener('orbit-index-change', onScrollIndexChange);
   frameWindow.scrollTo(0, 0);
 
@@ -855,9 +883,52 @@ async function runProductionBoundaryCheck() {
   }
   const mobilePlatforms = mobileDocument.querySelector('.platforms');
   const mobileGrid = mobileDocument.querySelector('.platform-grid');
+  const mobileSequence = mobileDocument.querySelector('.intro-sequence');
+  const mobileScene = mobileDocument.querySelector('.intro-scene');
   check(mobileCards.length === 3, 'all three mobile platform cards render');
   assertClose(mobilePlatforms.getBoundingClientRect().width, 288, 1, 'platform width is 288px at 320px');
   check(mobileWindow.getComputedStyle(mobileGrid).gridTemplateColumns.split(' ').length === 1, 'platform grid is one column at 320px');
+  const approvedMobileTravel = Number.parseFloat(
+    mobileWindow.getComputedStyle(mobileSequence, '::after').height
+  );
+  const mobileTravel = mobileSequence.scrollHeight - mobileScene.scrollHeight;
+  assertClose(mobileTravel, approvedMobileTravel, 1, 'mobile sequence exposes a finite intro travel');
+  const initialMobileSceneHeight = mobileScene.scrollHeight;
+  mobilePlatforms.style.paddingBottom = '420px';
+  await nextFrame();
+  await nextFrame();
+  check(mobileScene.scrollHeight > initialMobileSceneHeight, 'mobile overflow fixture makes the platform scene taller');
+  assertClose(
+    Number.parseFloat(mobileWindow.getComputedStyle(mobileSequence, '::after').height),
+    approvedMobileTravel,
+    1,
+    `tall platform overflow does not extend animation progress (${JSON.stringify({
+      before: mobileTravel,
+      after: mobileSequence.scrollHeight - mobileScene.scrollHeight,
+      sceneBefore: initialMobileSceneHeight,
+      sceneAfter: mobileScene.scrollHeight,
+      sequenceAfter: mobileSequence.scrollHeight,
+    })})`
+  );
+  mobilePlatforms.style.paddingBottom = '';
+  await nextFrame();
+  mobileWindow.scrollTo(0, approvedMobileTravel);
+  await nextFrame();
+  mobileWindow.dispatchEvent(new mobileWindow.Event('touchstart'));
+  await waitFor(
+    () => Number(mobileWindow.getComputedStyle(mobilePlatforms).opacity) >= 0.999,
+    'mobile platform did not reach completed intro state'
+  );
+  await waitFor(
+    () => Math.abs(Number(mobileProbe.style.getPropertyValue('--orbit-page-scale')) - 0.65) < 0.0001,
+    'mobile intro damping did not settle at the completed scale'
+  );
+  assertClose(
+    Number(mobileProbe.style.getPropertyValue('--orbit-page-scale')),
+    0.65,
+    0.0001,
+    'mobile intro reaches exact completed scale before natural overflow'
+  );
   mobileWindow.scrollTo(0, mobileDocument.documentElement.scrollHeight);
   for (let attempt = 0; attempt < 60; attempt += 1) {
     await nextFrame();

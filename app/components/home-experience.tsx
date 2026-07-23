@@ -1,8 +1,11 @@
 'use client';
 
 import { createElement, useEffect, useRef } from 'react';
+import { createSerialTaskQueue } from '../../src/serial-task-queue.js';
 import { Comments } from './comments';
 import { ContentFeed } from './content-feed';
+
+const productionStartupQueue = createSerialTaskQueue();
 
 declare global {
   interface Window { __ORBIT_MANAGED_BOOTSTRAP__?: boolean }
@@ -16,27 +19,54 @@ export function HomeExperience() {
     started.current = true;
     let disposed = false;
     let result: any;
+    let remoteData: any;
     window.__ORBIT_MANAGED_BOOTSTRAP__ = true;
-    const orbitModuleUrl = '/orbit/main.js?v=20260724-2';
-    Promise.all([
-      import(/* @vite-ignore */ orbitModuleUrl),
-      fetch('/api/public/config').then((response) => response.ok ? response.json() : null).catch(() => null),
-    ]).then(([module, payload]) => {
+    const orbitModuleUrl = import.meta.env.DEV
+      ? '/main.js?v=20260724-7'
+      : '/orbit/main.js?v=20260724-7';
+
+    const applyRemoteData = async () => {
+      if (disposed || !result || !remoteData) return;
+      const data = remoteData;
+      remoteData = null;
+      try {
+        await result?.updateData?.({
+          ...(data.orbit ? { config: data.orbit } : {}),
+          ...(data.platforms ? { platformData: data.platforms } : {}),
+        });
+      } catch (error) {
+        if (!disposed) console.warn('Orbit remote configuration update failed', error);
+      }
+    };
+
+    productionStartupQueue.run(async () => {
       if (disposed) return;
-      const data = payload?.ok ? payload.data : undefined;
-      return module.startProductionPage({
-        ...(data?.orbit ? { config: data.orbit } : {}),
-        ...(data?.platforms ? { platformData: data.platforms } : {}),
-      });
-    }).then((value) => { result = value; }).catch((error) => {
-      console.error('Orbit bootstrap failed', error);
+      const module = await import(/* @vite-ignore */ orbitModuleUrl);
+      if (disposed) return;
+      const value = await module.startProductionPage();
+      if (disposed) {
+        value?.destroy?.();
+        return;
+      }
+      result = value;
+      await applyRemoteData();
+    }).catch((error) => {
+      if (!disposed) console.error('Orbit bootstrap failed', error);
     });
+
+    fetch('/api/public/config')
+      .then((response) => response.ok ? response.json() : null)
+      .then(async (payload) => {
+        if (disposed || !payload?.ok) return;
+        remoteData = payload.data;
+        await applyRemoteData();
+      })
+      .catch(() => {});
+
     return () => {
       disposed = true;
       started.current = false;
-      result?.introController?.destroy?.();
-      result?.platformView?.destroy?.();
-      result?.host?.destroy?.();
+      result?.destroy?.();
     };
   }, []);
 

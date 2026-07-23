@@ -16,8 +16,18 @@ test('home preserves every Orbit hook before the new public sections', async () 
 test('React shell loads versioned Orbit assets so responsive fixes bypass stale caches', async () => {
   const layout = await read('app/layout.tsx');
   const home = await read('app/components/home-experience.tsx');
-  assert.match(layout, /\/orbit\/src\/base\.css\?v=20260724-2/);
-  assert.match(home, /\/orbit\/main\.js\?v=20260724-2/);
+  assert.match(layout, /\/orbit\/src\/base\.css\?v=20260724-4/);
+  assert.match(home, /\/orbit\/main\.js\?v=20260724-7/);
+  assert.match(home, /import\.meta\.env\.DEV\s*\?\s*['"]\/main\.js\?v=20260724-7/);
+});
+
+test('React shell starts fallback UI before remote configuration completes', async () => {
+  const home = await read('app/components/home-experience.tsx');
+  assert.doesNotMatch(home, /Promise\.all\(\s*\[\s*import/);
+  assert.match(home, /startProductionPage\(\)/);
+  assert.match(home, /productionStartupQueue\.run/);
+  assert.match(home, /result\?\.updateData\?/);
+  assert.match(home, /result\?\.destroy\?\.\(\)/);
 });
 
 test('platform and content cards share one horizontal column contract', async () => {

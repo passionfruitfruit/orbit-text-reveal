@@ -1,6 +1,6 @@
 import { animationConfig, platformConfig } from './config.js?v=20260718-3';
- import { renderPlatformCards } from './src/platform-renderer.js?v=20260718-3';
- import { createIntroScrollController } from './src/intro-scroll.js?v=20260724-2';
+ import { renderPlatformCards } from './src/platform-renderer.js?v=20260724-1';
+ import { createIntroScrollController } from './src/intro-scroll.js?v=20260724-5';
 
 export function resolvePlatformAssets(entries, baseUrl = import.meta.url) {
   return entries.map((entry) => ({
@@ -9,7 +9,7 @@ export function resolvePlatformAssets(entries, baseUrl = import.meta.url) {
   }));
 }
 
-export async function startProductionPage({
+ export async function startProductionPage({
    documentRef = globalThis.document,
    windowRef = globalThis,
    config = animationConfig,
@@ -20,6 +20,8 @@ export async function startProductionPage({
    recordEvent
  } = {}) {
    const record = recordEvent ?? (() => {});
+   let destroyed = false;
+   let updateRevision = 0;
 
    record('fonts-ready');
    await documentRef.fonts.ready;
@@ -36,15 +38,22 @@ export async function startProductionPage({
      throw new Error('startProductionPage: missing required DOM elements');
    }
 
+   const applyOrbitConfig = (nextConfig) => {
+     if (!nextConfig) return;
+     if (nextConfig.style?.background) {
+       documentRef.documentElement.style.setProperty(
+         '--orbit-page-background',
+         nextConfig.style.background
+       );
+     }
+     host.config = nextConfig;
+   };
+
    record('assign-orbit-config');
-   documentRef.documentElement.style.setProperty(
-     '--orbit-page-background',
-     config.style.background
-   );
-   host.config = config;
+   applyOrbitConfig(config);
 
    record('render-platforms');
-   const platformView = renderCards(grid, resolvePlatformAssets(platformData));
+   let platformView = await renderCards(grid, resolvePlatformAssets(platformData));
 
    record('start-intro');
    const introController = createController({
@@ -58,7 +67,40 @@ export async function startProductionPage({
    record('show-orbit');
    host.hidden = false;
 
-   return { host, platformView, introController };
+   return {
+     host,
+     get platformView() { return platformView; },
+     introController,
+     async updateData({ config: nextConfig, platformData: nextPlatforms } = {}) {
+       if (destroyed) return false;
+       const revision = ++updateRevision;
+       applyOrbitConfig(nextConfig);
+       if (nextPlatforms) {
+         const nextView = await renderCards(grid, resolvePlatformAssets(nextPlatforms));
+         if (destroyed) {
+           nextView?.destroy?.();
+           return false;
+         }
+         if (revision !== updateRevision) {
+           nextView?.destroy?.({ clear: false });
+           return false;
+         }
+         const previousView = platformView;
+         platformView = nextView;
+         previousView?.destroy?.({ clear: false });
+         introController.refreshCards?.();
+       }
+       return true;
+     },
+     destroy() {
+       if (destroyed) return;
+       destroyed = true;
+       updateRevision += 1;
+       introController.destroy?.();
+       platformView?.destroy?.();
+       host.destroy?.();
+     }
+   };
  }
 
  if (typeof document !== 'undefined' && !globalThis.__ORBIT_MANAGED_BOOTSTRAP__) {
